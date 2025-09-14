@@ -1,0 +1,14 @@
+name: MachinaWards
+main: com.machina.wards.MachinaWards
+version: 1.2.1
+api-version: 1.21
+author: Machina
+commands:
+  ward:
+    description: Manage wards
+    usage: /ward
+permissions:
+  wards.admin:
+    default: op
+  wards.player.*:
+    default: true

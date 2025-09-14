@@ -1,0 +1,44 @@
+region:
+  shape: column
+
+worlds: []
+
+height:
+  min_y: -64
+  max_y: 320
+
+alerts:
+  enabled: true
+  cooldown_ms: 90000
+  title_format: "&6Ward alert"
+  actionbar_format: "&e%player% entered your ward"
+
+protection:
+  block_place: true
+  block_break: true
+  interact: true
+  explosion: true
+  fire: true
+
+wards:
+  basic:
+    display_name: "&aBasic Ward"
+    result_material: SEA_LANTERN
+    price: 100
+    radius: 12
+    notify: true
+    custom_recipe:
+      - ["SEA_LANTERN", "SEA_LANTERN", "SEA_LANTERN"]
+      - ["SEA_LANTERN", "ENDER_EYE", "SEA_LANTERN"]
+      - ["SEA_LANTERN", "SEA_LANTERN", "SEA_LANTERN"]
+
+  advanced:
+    display_name: "&bAdvanced Ward"
+    result_material: BEACON
+    price: 500
+    radius: 20
+    notify: true
+    custom_recipe:
+      - ["DIAMOND_BLOCK", "NETHER_STAR", "DIAMOND_BLOCK"]
+      - ["OBSIDIAN", "BEACON", "OBSIDIAN"]
+      - ["IRON_BLOCK", "IRON_BLOCK", "IRON_BLOCK"]
