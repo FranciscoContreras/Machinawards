@@ -1,14 +1,19 @@
 name: MachinaWards
 main: com.machina.wards.MachinaWards
-version: 1.2.1
+version: 1.4.0
 api-version: 1.21
 author: Machina
+softdepend: [Vault]
 commands:
   ward:
     description: Manage wards
     usage: /ward
 permissions:
   wards.admin:
+    description: Full admin access — bypass all protection, delete any ward
     default: op
-  wards.player.*:
+  wards.place:
+    description: Allows placing ward blocks
     default: true
+  wards.player.*:
+    description: Wildcard for tier-based ward limits (e.g. wards.player.3)

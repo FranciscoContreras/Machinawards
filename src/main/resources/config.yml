@@ -20,17 +20,23 @@ protection:
   explosion: true
   fire: true
 
+particles:
+  enabled: true
+  type: END_ROD
+  interval_ticks: 40
+
 wards:
   basic:
     display_name: "&aBasic Ward"
-    result_material: SEA_LANTERN
+    result_material: LANTERN
     price: 100
     radius: 12
     notify: true
+    max_members: 5
     custom_recipe:
-      - ["SEA_LANTERN", "SEA_LANTERN", "SEA_LANTERN"]
-      - ["SEA_LANTERN", "ENDER_EYE", "SEA_LANTERN"]
-      - ["SEA_LANTERN", "SEA_LANTERN", "SEA_LANTERN"]
+      - ["IRON_INGOT", "IRON_INGOT", "IRON_INGOT"]
+      - ["IRON_INGOT", "ENDER_EYE", "IRON_INGOT"]
+      - ["IRON_INGOT", "LANTERN", "IRON_INGOT"]
 
   advanced:
     display_name: "&bAdvanced Ward"
@@ -38,7 +44,26 @@ wards:
     price: 500
     radius: 20
     notify: true
+    max_members: 10
     custom_recipe:
       - ["DIAMOND_BLOCK", "NETHER_STAR", "DIAMOND_BLOCK"]
       - ["OBSIDIAN", "BEACON", "OBSIDIAN"]
       - ["IRON_BLOCK", "IRON_BLOCK", "IRON_BLOCK"]
+
+  super:
+    display_name: "&5Super Ward"
+    result_material: CRYING_OBSIDIAN
+    price: 2500
+    radius: 30
+    notify: true
+    max_members: -1
+    features:
+      - creeper_alert
+      - mob_kills_player
+      - mob_kills_entity
+      - player_death
+      - explosion_log
+    custom_recipe:
+      - ["OBSIDIAN", "ENDER_EYE", "OBSIDIAN"]
+      - ["ENDER_EYE", "CRYING_OBSIDIAN", "ENDER_EYE"]
+      - ["OBSIDIAN", "ENDER_EYE", "OBSIDIAN"]

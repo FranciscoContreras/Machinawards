@@ -39,6 +39,19 @@ public class SqliteStore {
                         "intruder TEXT," +
                         "name TEXT," +
                         "ts INTEGER)");
+                s.executeUpdate("CREATE TABLE IF NOT EXISTS ward_features (" +
+                        "ward_id TEXT," +
+                        "feature TEXT," +
+                        "PRIMARY KEY(ward_id, feature))");
+                s.executeUpdate("CREATE TABLE IF NOT EXISTS feature_logs (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                        "ward_id TEXT," +
+                        "feature TEXT," +
+                        "message TEXT," +
+                        "ts INTEGER)");
+                // Migrate: add name column if it doesn't exist yet
+                try { s.executeUpdate("ALTER TABLE wards ADD COLUMN name TEXT DEFAULT ''"); }
+                catch (SQLException ignore) { /* column already exists */ }
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -65,7 +78,10 @@ public class SqliteStore {
                 String tier = rs.getString("tier");
                 boolean notify = rs.getInt("notify") != 0;
                 long created = rs.getLong("created_at");
-                list.add(new Ward(id, owner, world, x, y, z, radius, tier, notify, created));
+                String name = rs.getString("name");
+                Ward ward = new Ward(id, owner, world, x, y, z, radius, tier, notify, created);
+                ward.setName(name != null ? name : "");
+                list.add(ward);
             }
         } catch (SQLException e) { throw new RuntimeException(e); }
         return list;
@@ -84,7 +100,7 @@ public class SqliteStore {
 
     public void saveWard(Ward w) {
         try (Connection c = connect();
-             PreparedStatement ps = c.prepareStatement("REPLACE INTO wards(id,owner,world,x,y,z,radius,tier,notify,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)")) {
+             PreparedStatement ps = c.prepareStatement("REPLACE INTO wards(id,owner,world,x,y,z,radius,tier,notify,created_at,name) VALUES (?,?,?,?,?,?,?,?,?,?,?)")) {
             ps.setString(1, w.id().toString());
             ps.setString(2, w.owner().toString());
             ps.setString(3, w.world());
@@ -95,24 +111,88 @@ public class SqliteStore {
             ps.setString(8, w.tier());
             ps.setInt(9, w.notifyEnabled() ? 1 : 0);
             ps.setLong(10, w.createdAt());
+            ps.setString(11, w.name());
             ps.executeUpdate();
         } catch (SQLException e) { throw new RuntimeException(e); }
     }
 
     public void deleteWard(java.util.UUID id) {
         try (Connection c = connect()) {
-            try (PreparedStatement a = c.prepareStatement("DELETE FROM members WHERE ward_id=?")) {
-                a.setString(1, id.toString());
-                a.executeUpdate();
-            }
-            try (PreparedStatement b = c.prepareStatement("DELETE FROM logs WHERE ward_id=?")) {
-                b.setString(1, id.toString());
-                b.executeUpdate();
+            for (String table : new String[]{"members", "logs", "ward_features", "feature_logs"}) {
+                String col = table.equals("wards") ? "id" : "ward_id";
+                try (PreparedStatement ps = c.prepareStatement("DELETE FROM " + table + " WHERE " + col + "=?")) {
+                    ps.setString(1, id.toString());
+                    ps.executeUpdate();
+                }
             }
             try (PreparedStatement ps = c.prepareStatement("DELETE FROM wards WHERE id=?")) {
                 ps.setString(1, id.toString());
                 ps.executeUpdate();
             }
+        } catch (SQLException e) { throw new RuntimeException(e); }
+    }
+
+    public java.util.Set<String> loadFeatures(java.util.UUID wardId) {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        try (Connection c = connect();
+             PreparedStatement ps = c.prepareStatement("SELECT feature FROM ward_features WHERE ward_id=?")) {
+            ps.setString(1, wardId.toString());
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) out.add(rs.getString(1));
+        } catch (SQLException e) { throw new RuntimeException(e); }
+        return out;
+    }
+
+    public void saveFeature(java.util.UUID wardId, String featureId, boolean enabled) {
+        try (Connection c = connect()) {
+            if (enabled) {
+                try (PreparedStatement ps = c.prepareStatement("INSERT OR IGNORE INTO ward_features(ward_id,feature) VALUES(?,?)")) {
+                    ps.setString(1, wardId.toString());
+                    ps.setString(2, featureId);
+                    ps.executeUpdate();
+                }
+            } else {
+                try (PreparedStatement ps = c.prepareStatement("DELETE FROM ward_features WHERE ward_id=? AND feature=?")) {
+                    ps.setString(1, wardId.toString());
+                    ps.setString(2, featureId);
+                    ps.executeUpdate();
+                }
+            }
+        } catch (SQLException e) { throw new RuntimeException(e); }
+    }
+
+    public void logFeatureEvent(java.util.UUID wardId, String featureId, String message, long ts) {
+        try (Connection c = connect();
+             PreparedStatement ps = c.prepareStatement("INSERT INTO feature_logs(ward_id,feature,message,ts) VALUES(?,?,?,?)")) {
+            ps.setString(1, wardId.toString());
+            ps.setString(2, featureId);
+            ps.setString(3, message);
+            ps.setLong(4, ts);
+            ps.executeUpdate();
+        } catch (SQLException e) { throw new RuntimeException(e); }
+    }
+
+    public java.util.List<String> getFeatureLogs(java.util.UUID wardId, String featureId, int limit) {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        try (Connection c = connect();
+             PreparedStatement ps = c.prepareStatement(
+                     "SELECT message, ts FROM feature_logs WHERE ward_id=? AND feature=? ORDER BY ts DESC LIMIT ?")) {
+            ps.setString(1, wardId.toString());
+            ps.setString(2, featureId);
+            ps.setInt(3, limit);
+            ResultSet rs = ps.executeQuery();
+            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("MM-dd HH:mm");
+            while (rs.next()) out.add("[" + sdf.format(new java.util.Date(rs.getLong(2))) + "] " + rs.getString(1));
+        } catch (SQLException e) { throw new RuntimeException(e); }
+        return out;
+    }
+
+    public void clearFeatureLogs(java.util.UUID wardId, String featureId) {
+        try (Connection c = connect();
+             PreparedStatement ps = c.prepareStatement("DELETE FROM feature_logs WHERE ward_id=? AND feature=?")) {
+            ps.setString(1, wardId.toString());
+            ps.setString(2, featureId);
+            ps.executeUpdate();
         } catch (SQLException e) { throw new RuntimeException(e); }
     }
 

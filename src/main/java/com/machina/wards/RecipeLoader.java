@@ -1,7 +1,6 @@
 package com.machina.wards;
 
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.ConfigurationSection;
@@ -28,8 +27,7 @@ public class RecipeLoader {
     }
 
     public void registerAll() {
-        var cfg = plugin.getConfig();
-        ConfigurationSection ws = cfg.getConfigurationSection("wards");
+        ConfigurationSection ws = plugin.getConfig().getConfigurationSection("wards");
         if (ws == null) return;
 
         for (String tier : ws.getKeys(false)) {
@@ -46,25 +44,40 @@ public class RecipeLoader {
 
             java.util.List<?> rows = sec.getList("custom_recipe");
             if (rows != null && rows.size() == 3) {
-                sr.shape("ABC", "DEF", "GHI");
+                // Build shape dynamically so each grid position maps to the correct material.
+                // shape() must be called before setIngredient(), so collect ingredients first.
+                char[][] grid = new char[3][3];
                 Map<String, Character> map = new HashMap<>();
-                char[] labels = "ABCDEFGHI".toCharArray();
-                int idx = 0;
+                Map<Character, Material> ingredients = new HashMap<>();
+                char nextChar = 'A';
                 for (int r = 0; r < 3; r++) {
                     java.util.List<?> row = (java.util.List<?>) rows.get(r);
                     for (int c = 0; c < 3; c++) {
                         String token = "";
                         if (row != null && c < row.size() && row.get(c) != null) token = row.get(c).toString();
-                        if (token.isEmpty() || token.equalsIgnoreCase("AIR")) continue;
+                        if (token.isEmpty() || token.equalsIgnoreCase("AIR")) {
+                            grid[r][c] = ' ';
+                            continue;
+                        }
                         Material m = Material.matchMaterial(token);
-                        if (m == null || m == Material.AIR) continue;
+                        if (m == null || m == Material.AIR) {
+                            grid[r][c] = ' ';
+                            continue;
+                        }
                         Character ch = map.get(token);
                         if (ch == null) {
-                            ch = labels[idx++];
+                            ch = nextChar++;
                             map.put(token, ch);
-                            sr.setIngredient(ch, m);
+                            ingredients.put(ch, m);
                         }
+                        grid[r][c] = ch;
                     }
+                }
+                sr.shape(new String(new char[]{grid[0][0], grid[0][1], grid[0][2]}),
+                         new String(new char[]{grid[1][0], grid[1][1], grid[1][2]}),
+                         new String(new char[]{grid[2][0], grid[2][1], grid[2][2]}));
+                for (Map.Entry<Character, Material> entry : ingredients.entrySet()) {
+                    sr.setIngredient(entry.getKey(), entry.getValue());
                 }
             } else {
                 sr.shape(" A ", "ABA", " A ");
@@ -79,7 +92,8 @@ public class RecipeLoader {
     public ItemStack createWardItem(String tier, Material mat, String display) {
         ItemStack it = new ItemStack(mat);
         ItemMeta meta = it.getItemMeta();
-        meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', display));
+        if (meta == null) return it;
+        meta.setDisplayName(Msg.c(display));
         meta.getPersistentDataContainer().set(tierKey, PersistentDataType.STRING, tier);
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
         it.setItemMeta(meta);

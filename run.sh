@@ -1,14 +1,15 @@
 #!/bin/bash
 set -e
 
-# Paths
-SPIGOT_JAR=/Users/francisco/Desktop/MachinaWards/spigot-api-1.21.8-R0.1-SNAPSHOT-shaded.jar
-VAULT_JAR=/Users/francisco/Desktop/MachinaWards/test-server/plugins/Vault.jar
+# Paths (relative to project root)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SPIGOT_JAR="$SCRIPT_DIR/spigot-api-1.21.8-R0.1-SNAPSHOT-shaded.jar"
+VAULT_JAR="$SCRIPT_DIR/test-server/plugins/Vault.jar"
 SRC_DIR=src/main/java
 RES_DIR=src/main/resources
 OUT_DIR=out
 JAR_NAME=MachinaWards.jar
-PLUGIN_DIR=/Users/francisco/Desktop/MachinaWards/test-server/plugins
+PLUGIN_DIR="$SCRIPT_DIR/test-server/plugins"
 
 # Clean and create out directory
 rm -rf "$OUT_DIR"

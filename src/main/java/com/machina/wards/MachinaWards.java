@@ -4,6 +4,7 @@ import net.milkbowl.vault.economy.Economy;
 import org.bukkit.NamespacedKey;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 
 public class MachinaWards extends JavaPlugin {
 
@@ -11,12 +12,17 @@ public class MachinaWards extends JavaPlugin {
     private Economy economy;
     private NamespacedKey tierKey;
     private NamespacedKey actionKey;
+    private NamespacedKey memberKey;
+    private NamespacedKey featureKey;
+    private BukkitTask particleTask;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         tierKey = new NamespacedKey(this, "ward-tier");
         actionKey = new NamespacedKey(this, "ward-action");
+        memberKey = new NamespacedKey(this, "ward-member");
+        featureKey = new NamespacedKey(this, "ward-feature");
 
         SqliteStore store = new SqliteStore(getDataFolder());
         store.init();
@@ -27,26 +33,35 @@ public class MachinaWards extends JavaPlugin {
         RecipeLoader recipes = new RecipeLoader(this, tierKey, manager);
         recipes.registerAll();
 
-        setupEconomy();
+        int intervalTicks = getConfig().getInt("particles.interval_ticks", 40);
+        particleTask = new WardParticleTask(this, manager).runTaskTimer(this, 20L, intervalTicks);
 
         getServer().getPluginManager().registerEvents(new ProtectionListener(this, manager), this);
         getServer().getPluginManager().registerEvents(new EntryListener(this, manager), this);
         getServer().getPluginManager().registerEvents(new WardBlocksListener(this, manager, tierKey), this);
-        getServer().getPluginManager().registerEvents(new WardMenuListener(this, manager, tierKey, actionKey), this);
-        if (economy != null) {
-            getServer().getPluginManager().registerEvents(new ShopMenuListener(this, manager, tierKey, economy), this);
-        }
+        getServer().getPluginManager().registerEvents(new WardMenuListener(this, manager, tierKey, actionKey, memberKey), this);
+        getServer().getPluginManager().registerEvents(new SuperWardMenuListener(this), this);
+        getServer().getPluginManager().registerEvents(new SuperWardEventListener(this), this);
+        getServer().getPluginManager().registerEvents(new WardItemGuardListener(this), this);
 
-        if (getCommand("ward") != null) {
-            getCommand("ward").setExecutor(new WardCommand(this, manager, economy));
-            getCommand("ward").setTabCompleter(new WardTab(manager));
-        }
+        // Defer economy hook to next tick so all economy providers finish registering
+        getServer().getScheduler().runTask(this, () -> {
+            setupEconomy();
+            if (economy != null) {
+                getServer().getPluginManager().registerEvents(new ShopMenuListener(this, manager, tierKey, economy), this);
+            }
+            if (getCommand("ward") != null) {
+                getCommand("ward").setExecutor(new WardCommand(this, manager, economy));
+                getCommand("ward").setTabCompleter(new WardTab(manager));
+            }
+        });
 
         getLogger().info("MachinaWards enabled");
     }
 
     @Override
     public void onDisable() {
+        if (particleTask != null) particleTask.cancel();
         if (manager != null) manager.flush();
         getLogger().info("MachinaWards disabled");
     }
@@ -55,6 +70,8 @@ public class MachinaWards extends JavaPlugin {
     public Economy economy() { return economy; }
     public NamespacedKey tierKey() { return tierKey; }
     public NamespacedKey actionKey() { return actionKey; }
+    public NamespacedKey memberKey() { return memberKey; }
+    public NamespacedKey featureKey() { return featureKey; }
 
     private void setupEconomy() {
         if (getServer().getPluginManager().getPlugin("Vault") == null) {

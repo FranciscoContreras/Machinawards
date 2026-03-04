@@ -3,7 +3,6 @@ package com.machina.wards;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -29,9 +28,12 @@ public class EntryListener implements Listener {
                 && e.getTo().getBlockY() == e.getFrom().getBlockY()
                 && e.getTo().getBlockZ() == e.getFrom().getBlockZ()) return;
 
+        if (!plugin.getConfig().getBoolean("alerts.enabled", true)) return;
+
         Player p = e.getPlayer();
         Location to = e.getTo();
-        String world = to.getWorld() == null ? "" : to.getWorld().getName();
+        if (to.getWorld() == null) return;
+        String world = to.getWorld().getName();
 
         long now = System.currentTimeMillis();
         long cdMs = plugin.getConfig().getLong("alerts.cooldown_ms", 90_000);
@@ -41,33 +43,33 @@ public class EntryListener implements Listener {
             if (w == null) continue;
             if (!manager.contains(w, to)) continue;
             if (w.owner().equals(p.getUniqueId())) continue;
+            if (w.members().contains(p.getUniqueId())) continue;
 
             long last = manager.lastAlertAt(w.id(), p.getUniqueId());
-            boolean firstTime = last == 0L;
-            if (firstTime || now - last >= cdMs) {
-                manager.setLastAlert(w.id(), p.getUniqueId(), now);
+            if (last != 0L && now - last < cdMs) continue;
 
-                String title = ChatColor.translateAlternateColorCodes('&',
-                        plugin.getConfig().getString("alerts.title_format", "&6Ward alert"));
-                String action = ChatColor.translateAlternateColorCodes('&',
-                        plugin.getConfig().getString("alerts.actionbar_format", "&e%player% entered your ward"))
-                        .replace("%player%", p.getName());
+            manager.setLastAlert(w.id(), p.getUniqueId(), now);
+            manager.logEntry(w.id(), p.getUniqueId(), p.getName());
 
-                Player owner = Bukkit.getPlayer(w.owner());
-                if (owner != null && owner.isOnline() && w.notifyEnabled()) {
-                    owner.sendTitle(title, "", 5, 30, 10);
-                    owner.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(action));
-                    owner.sendMessage(action);
+            if (!w.notifyEnabled()) continue;
+
+            String title = Msg.c(plugin.getConfig().getString("alerts.title_format", "&6Ward alert"));
+            String action = Msg.c(plugin.getConfig().getString("alerts.actionbar_format",
+                    "&e%player% entered your ward").replace("%player%", p.getName()));
+
+            Player owner = Bukkit.getPlayer(w.owner());
+            if (owner != null && owner.isOnline()) {
+                owner.sendTitle(title, "", 5, 30, 10);
+                owner.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(action));
+                owner.sendMessage(action);
+            }
+            for (UUID u : w.members()) {
+                Player m = Bukkit.getPlayer(u);
+                if (m != null && m.isOnline()) {
+                    m.sendTitle(title, "", 5, 30, 10);
+                    m.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(action));
+                    m.sendMessage(action);
                 }
-                for (java.util.UUID u : w.members()) {
-                    Player m = Bukkit.getPlayer(u);
-                    if (m != null && m.isOnline() && w.notifyEnabled()) {
-                        m.sendTitle(title, "", 5, 30, 10);
-                        m.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(action));
-                        m.sendMessage(action);
-                    }
-                }
-                manager.logEntry(w.id(), p.getUniqueId(), p.getName());
             }
         }
     }

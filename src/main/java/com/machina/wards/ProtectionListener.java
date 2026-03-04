@@ -6,7 +6,10 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockBurnEvent;
+import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 
 import java.util.UUID;
@@ -25,6 +28,7 @@ public class ProtectionListener implements Listener {
         if (b == null) return false;
         Ward w = manager.findAt(b.getLocation());
         if (w == null) return false;
+        if (p.hasPermission("wards.admin")) return false;
 
         UUID pid = p.getUniqueId();
         if (pid.equals(w.owner())) return false;
@@ -50,5 +54,23 @@ public class ProtectionListener implements Listener {
         if (!plugin.getConfig().getBoolean("protection.interact", true)) return;
         if (e.getClickedBlock() == null) return;
         if (blocked(e.getPlayer(), e.getClickedBlock())) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    public void onEntityExplosion(EntityExplodeEvent e) {
+        if (!plugin.getConfig().getBoolean("protection.explosion", true)) return;
+        e.blockList().removeIf(b -> manager.findAt(b.getLocation()) != null);
+    }
+
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    public void onBlockExplosion(BlockExplodeEvent e) {
+        if (!plugin.getConfig().getBoolean("protection.explosion", true)) return;
+        e.blockList().removeIf(b -> manager.findAt(b.getLocation()) != null);
+    }
+
+    @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
+    public void onBurn(BlockBurnEvent e) {
+        if (!plugin.getConfig().getBoolean("protection.fire", true)) return;
+        if (manager.findAt(e.getBlock().getLocation()) != null) e.setCancelled(true);
     }
 }

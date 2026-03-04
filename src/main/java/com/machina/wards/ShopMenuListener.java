@@ -14,6 +14,10 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.persistence.PersistentDataType;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class ShopMenuListener implements Listener {
 
@@ -32,7 +36,7 @@ public class ShopMenuListener implements Listener {
     public void open(Player p) {
         Inventory inv = Bukkit.createInventory(p, 27, ChatColor.DARK_GREEN + "Ward Shop");
 
-        var sec = plugin.getConfig().getConfigurationSection("wards");
+        ConfigurationSection sec = plugin.getConfig().getConfigurationSection("wards");
         if (sec != null) {
             int slot = 10;
             for (String tier : sec.getKeys(false)) {
@@ -41,13 +45,17 @@ public class ShopMenuListener implements Listener {
                 String matName = t.getString("result_material", "SEA_LANTERN");
                 Material mat = Material.matchMaterial(matName);
                 if (mat == null) mat = Material.SEA_LANTERN;
-                ItemStack it = new RecipeLoader(plugin, tierKey, manager).createWardItem(tier, mat, t.getString("display_name", "&aWard"));
+
+                ItemStack it = new RecipeLoader(plugin, tierKey, manager)
+                        .createWardItem(tier, mat, t.getString("display_name", "&aWard"));
                 ItemMeta im = it.getItemMeta();
-                java.util.List<String> lore = new java.util.ArrayList<>();
-                lore.add(ChatColor.translateAlternateColorCodes('&', "&7Price: &f" + t.getInt("price", 100)));
-                lore.add(ChatColor.translateAlternateColorCodes('&', "&7Radius: &f" + t.getInt("radius", 12)));
-                im.setLore(lore);
-                it.setItemMeta(im);
+                if (im != null) {
+                    List<String> lore = new ArrayList<>();
+                    lore.add(Msg.c("&7Price: &f" + t.getInt("price", 100)));
+                    lore.add(Msg.c("&7Radius: &f" + t.getInt("radius", 12)));
+                    im.setLore(lore);
+                    it.setItemMeta(im);
+                }
                 inv.setItem(slot++, it);
                 if (slot == 17) slot = 19;
             }
@@ -59,24 +67,24 @@ public class ShopMenuListener implements Listener {
     @EventHandler
     public void onClick(InventoryClickEvent e) {
         HumanEntity he = e.getWhoClicked();
-        if (!(he instanceof Player)) return;
-        if (e.getView().getTitle() == null || !ChatColor.stripColor(e.getView().getTitle()).equalsIgnoreCase("Ward Shop")) return;
+        if (!(he instanceof Player p)) return;
+        String rawTitle = e.getView().getTitle();
+        if (rawTitle == null || !ChatColor.stripColor(rawTitle).equalsIgnoreCase("Ward Shop")) return;
         e.setCancelled(true);
 
         ItemStack it = e.getCurrentItem();
         if (it == null || !it.hasItemMeta()) return;
-        String tier = it.getItemMeta().getPersistentDataContainer().get(tierKey, org.bukkit.persistence.PersistentDataType.STRING);
+        String tier = it.getItemMeta().getPersistentDataContainer().get(tierKey, PersistentDataType.STRING);
         if (tier == null) return;
 
-        Player p = (Player) he;
+        if (econ == null) { p.sendMessage(Msg.c("&cShop disabled, Vault not hooked.")); return; }
 
         int price = plugin.getConfig().getInt("wards." + tier + ".price", 100);
-        if (econ == null) { p.sendMessage(ChatColor.translateAlternateColorCodes('&', "&cShop disabled, Vault not hooked.")); return; }
-
-        if (!econ.has(p, price)) { p.sendMessage(ChatColor.translateAlternateColorCodes('&', "&cYou need " + price + " to buy this.")); return; }
+        if (!econ.has(p, price)) { p.sendMessage(Msg.c("&cYou need " + price + " to buy this.")); return; }
 
         econ.withdrawPlayer(p, price);
         p.getInventory().addItem(it.clone());
-        p.sendMessage(ChatColor.translateAlternateColorCodes('&', "&aPurchased " + ChatColor.translateAlternateColorCodes('&', plugin.getConfig().getString("wards." + tier + ".display_name", "&aWard")) + "&a."));
+        p.sendMessage(Msg.c("&aPurchased " +
+                plugin.getConfig().getString("wards." + tier + ".display_name", "&aWard") + "&a."));
     }
 }

@@ -1,0 +1,24 @@
+# Compiled output
+out/
+
+# Test server runtime data
+test-server/world/
+test-server/world_nether/
+test-server/world_the_end/
+test-server/logs/
+test-server/crash-reports/
+test-server/plugins/MachinaWards/
+test-server/plugins/Essentials/
+test-server/plugins/ViaBackwards/
+test-server/plugins/ViaVersion/
+test-server/usercache.json
+test-server/ops.json
+test-server/banned-ips.json
+test-server/banned-players.json
+test-server/whitelist.json
+test-server/server.properties
+
+# Dependencies
+apache-maven-3.9.6/
+spigot-api-*.jar
+libs/

@@ -10,6 +10,8 @@ import org.bukkit.persistence.PersistentDataType;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.List;
 
 public class WardManager {
 
@@ -32,6 +34,7 @@ public class WardManager {
             wards.put(w.id(), w);
             byWorld.computeIfAbsent(w.world(), k -> ConcurrentHashMap.newKeySet()).add(w.id());
             for (UUID m : store.loadMembers(w.id())) w.members().add(m);
+            w.enabledFeatures().addAll(store.loadFeatures(w.id()));
         }
     }
 
@@ -74,6 +77,14 @@ public class WardManager {
 
     public Ward get(UUID id) { return wards.get(id); }
 
+    public Ward findByShortId(String shortId) {
+        String upper = shortId.toUpperCase(java.util.Locale.ROOT);
+        for (Ward w : wards.values()) {
+            if (w.shortId().equalsIgnoreCase(upper) || w.id().toString().startsWith(shortId.toLowerCase(java.util.Locale.ROOT))) return w;
+        }
+        return null;
+    }
+
     public Collection<Ward> all() { return Collections.unmodifiableCollection(wards.values()); }
 
     public Set<UUID> idsInWorld(String world) { return byWorld.getOrDefault(world, Collections.emptySet()); }
@@ -104,6 +115,36 @@ public class WardManager {
             if (w != null && contains(w, loc)) return w;
         }
         return null;
+    }
+
+    public List<Ward> findAllAt(Location loc) {
+        if (loc == null || loc.getWorld() == null) return Collections.emptyList();
+        String world = loc.getWorld().getName();
+        List<Ward> result = new ArrayList<>();
+        for (UUID id : idsInWorld(world)) {
+            Ward w = wards.get(id);
+            if (w != null && contains(w, loc)) result.add(w);
+        }
+        return result;
+    }
+
+    public void setFeature(UUID wardId, WardFeature f, boolean enabled) {
+        Ward w = wards.get(wardId);
+        if (w == null) return;
+        w.setFeature(f, enabled);
+        store.saveFeature(wardId, f.id(), enabled);
+    }
+
+    public void logFeatureEvent(UUID wardId, WardFeature f, String message) {
+        store.logFeatureEvent(wardId, f.id(), message, System.currentTimeMillis());
+    }
+
+    public List<String> getFeatureLogs(UUID wardId, WardFeature f, int limit) {
+        return store.getFeatureLogs(wardId, f.id(), limit);
+    }
+
+    public void clearFeatureLogs(UUID wardId, WardFeature f) {
+        store.clearFeatureLogs(wardId, f.id());
     }
 
     public int getLimit(Player p) {
@@ -139,6 +180,20 @@ public class WardManager {
         String t = pdc.get(plugin.tierKey(), PersistentDataType.STRING);
         if (t != null) return t;
         return null;
+    }
+
+    public boolean overlaps(String world, int x, int z, int radius, UUID excludeId) {
+        for (UUID id : idsInWorld(world)) {
+            if (id.equals(excludeId)) continue;
+            Ward w = wards.get(id);
+            if (w == null) continue;
+            if (Math.abs(w.bx() - x) <= w.radius() + radius && Math.abs(w.bz() - z) <= w.radius() + radius) return true;
+        }
+        return false;
+    }
+
+    public int maxMembers(Ward w) {
+        return plugin.getConfig().getInt("wards." + w.tier() + ".max_members", -1);
     }
 
     public boolean allowedWorld(String world) {
