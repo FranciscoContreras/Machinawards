@@ -16,13 +16,13 @@ import java.util.List;
 public class WardManager {
 
     private final MachinaWards plugin;
-    private final SqliteStore store;
+    private final DataStore store;
     private final Map<UUID, Ward> wards = new ConcurrentHashMap<>();
     private final Map<String, Set<UUID>> byWorld = new ConcurrentHashMap<>();
 
     private final Map<UUID, Map<UUID, Long>> lastAlert = new ConcurrentHashMap<>();
 
-    public WardManager(MachinaWards plugin, SqliteStore store) {
+    public WardManager(MachinaWards plugin, DataStore store) {
         this.plugin = plugin;
         this.store = store;
     }
@@ -30,11 +30,16 @@ public class WardManager {
     public void loadAll() {
         wards.clear();
         byWorld.clear();
-        for (Ward w : store.loadWards()) {
+        // Bulk-load members and features in two queries instead of N+N
+        Map<java.util.UUID, Map<java.util.UUID, String>> allMembers = store.loadAllMembers();
+        Map<java.util.UUID, Set<String>> allFeatures = store.loadAllFeatures();
+        for (Ward w : ((AbstractStore) store).loadWards()) {
             wards.put(w.id(), w);
             byWorld.computeIfAbsent(w.world(), k -> ConcurrentHashMap.newKeySet()).add(w.id());
-            for (UUID m : store.loadMembers(w.id())) w.members().add(m);
-            w.enabledFeatures().addAll(store.loadFeatures(w.id()));
+            Map<java.util.UUID, String> members = allMembers.get(w.id());
+            if (members != null) w.members().addAll(members.keySet());
+            Set<String> features = allFeatures.get(w.id());
+            if (features != null) w.enabledFeatures().addAll(features);
         }
     }
 
@@ -55,7 +60,7 @@ public class WardManager {
         Ward w = wards.get(wardId);
         if (w == null) return;
         w.members().add(member);
-        store.addMember(wardId, member);
+        store.addMember(wardId, member, "member");
     }
 
     public void removeMember(UUID wardId, UUID member) {

@@ -9,6 +9,7 @@ import org.bukkit.scheduler.BukkitTask;
 public class MachinaWards extends JavaPlugin {
 
     private WardManager manager;
+    private DataStore store;
     private Economy economy;
     private NamespacedKey tierKey;
     private NamespacedKey actionKey;
@@ -24,7 +25,7 @@ public class MachinaWards extends JavaPlugin {
         memberKey = new NamespacedKey(this, "ward-member");
         featureKey = new NamespacedKey(this, "ward-feature");
 
-        SqliteStore store = new SqliteStore(getDataFolder());
+        store = new SqliteStore(getDataFolder());
         store.init();
 
         manager = new WardManager(this, store);
@@ -63,6 +64,7 @@ public class MachinaWards extends JavaPlugin {
     public void onDisable() {
         if (particleTask != null) particleTask.cancel();
         if (manager != null) manager.flush();
+        if (store != null) store.shutdown();
         getLogger().info("MachinaWards disabled");
     }
 
