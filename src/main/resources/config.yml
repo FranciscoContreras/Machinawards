@@ -1,3 +1,15 @@
+# ── Database ──────────────────────────────────────────────────────────────────
+# type: sqlite  (default, no setup required — data stored in plugins/MachinaWards/MachinaWards.db)
+# type: mysql   (requires a MySQL/MariaDB server; fill in credentials below)
+database:
+  type: sqlite
+  mysql:
+    host: localhost
+    port: 3306
+    database: machinawards
+    username: root
+    password: ""
+
 region:
   shape: column
 
@@ -11,7 +23,14 @@ alerts:
   enabled: true
   cooldown_ms: 90000
   title_format: "&6Ward alert"
-  actionbar_format: "&e%player% entered your ward"
+  actionbar_format: "&e%player% entered &f%ward%"
+
+entry:
+  show_warning_to_visitor: true
+  warning_format: "&c⚠ Entering &f%ward% &c— owned by &f%owner%"
+
+pickup:
+  confirm_ms: 5000
 
 protection:
   block_place: true
@@ -19,6 +38,19 @@ protection:
   interact: true
   explosion: true
   fire: true
+  piston: true        # block pistons from pushing/pulling blocks across ward boundaries
+  entity_grief: true  # block enderman, silverfish, wither, ravager, etc. from changing blocks
+  fluid_flow: true    # block lava/water from flowing into a ward
+  hanging: true       # block non-members from breaking item frames and paintings
+  pvp: true           # block outsiders from attacking players inside a ward (per-ward flag: allow_pvp)
+  entity_damage: true # block outsiders from damaging animals/mobs inside a ward (per-ward flag: allow_mob_damage)
+  crop_trample: true  # block non-members from trampling farmland inside a ward
+
+sounds:
+  ward_place: BLOCK_BEACON_ACTIVATE
+  ward_break: BLOCK_BEACON_DEACTIVATE
+  ward_pickup: ITEM_BUNDLE_REMOVE_ONE
+  entry_alert: BLOCK_NOTE_BLOCK_BELL
 
 particles:
   enabled: true

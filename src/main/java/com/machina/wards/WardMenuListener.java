@@ -1,7 +1,7 @@
 package com.machina.wards;
 
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Color;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -13,7 +13,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -37,8 +36,9 @@ public class WardMenuListener implements Listener {
     private final NamespacedKey actionKey;
     private final NamespacedKey memberKey;
 
-    private static final Map<UUID, UUID> pendingAdd    = new ConcurrentHashMap<>();
-    private static final Map<UUID, UUID> pendingRename = new ConcurrentHashMap<>();
+    private static final Map<UUID, UUID> pendingAdd     = new ConcurrentHashMap<>();
+    private static final Map<UUID, UUID> pendingRename  = new ConcurrentHashMap<>();
+    private static final Map<UUID, UUID> pendingMessage = new ConcurrentHashMap<>();
 
     public WardMenuListener(MachinaWards plugin, WardManager manager,
                             NamespacedKey wardKey, NamespacedKey actionKey, NamespacedKey memberKey) {
@@ -52,7 +52,7 @@ public class WardMenuListener implements Listener {
     // ── Main menu ────────────────────────────────────────────────────────────
 
     public static void openMain(MachinaWards plugin, Player p, Ward w) {
-        Inventory inv = Bukkit.createInventory(p, 27, ChatColor.DARK_AQUA + TITLE_MAIN);
+        Inventory inv = Bukkit.createInventory(p, 27, Msg.c("&3" + TITLE_MAIN));
         String nameLabel = w.name().isEmpty() ? "&6Rename" : "&6Rename &7(" + w.name() + ")";
         inv.setItem(10, item(plugin, w, Material.NAME_TAG,    nameLabel,         "rename"));
         inv.setItem(11, item(plugin, w, Material.BELL,        "&eToggle alerts",  "toggle_alerts"));
@@ -61,11 +61,31 @@ public class WardMenuListener implements Listener {
         inv.setItem(14, item(plugin, w, Material.SPYGLASS,    "&dShow Radius",    "show_radius"));
         inv.setItem(15, item(plugin, w, Material.EMERALD,     "&aAdd member",     "add_member"));
         inv.setItem(16, item(plugin, w, Material.BARRIER,     "&cRemove member",  "remove_member"));
+        String msgLabel = w.entryMessage().isEmpty() ? "&6Entry Message" : "&6Entry Message &7(set)";
+        inv.setItem(19, item(plugin, w, Material.FEATHER, msgLabel, "set_entry_message"));
+        // Per-ward flags
+        inv.setItem(20, flagItem(plugin, w, WardFlag.ALLOW_PVP));
+        inv.setItem(21, flagItem(plugin, w, WardFlag.ALLOW_MOB_DAMAGE));
         // Show Ward Intelligence button only for tiers that have features configured
         if (plugin.getConfig().isList("wards." + w.tier() + ".features")) {
             inv.setItem(22, item(plugin, w, Material.NETHER_STAR, "&5\u2726 Ward Intelligence", "features"));
         }
         p.openInventory(inv);
+    }
+
+    private static ItemStack flagItem(MachinaWards plugin, Ward w, WardFlag flag) {
+        boolean on = w.hasFlag(flag);
+        Material mat = on ? flag.icon() : Material.BARRIER;
+        String label = Msg.c(flag.displayName()) + " " + (on ? Msg.c("&a[ON]") : Msg.c("&c[OFF]"));
+        ItemStack it = new ItemStack(mat);
+        ItemMeta m = it.getItemMeta();
+        if (m == null) return it;
+        m.setDisplayName(label);
+        m.setLore(java.util.List.of(Msg.c(flag.description())));
+        m.getPersistentDataContainer().set(plugin.tierKey(),   PersistentDataType.STRING, w.id().toString());
+        m.getPersistentDataContainer().set(plugin.actionKey(), PersistentDataType.STRING, "flag:" + flag.id());
+        it.setItemMeta(m);
+        return it;
     }
 
     private static ItemStack item(MachinaWards plugin, Ward w, Material mat, String name, String action) {
@@ -87,7 +107,7 @@ public class WardMenuListener implements Listener {
             return;
         }
         int size = Math.min(6, (int) Math.ceil(w.members().size() / 9.0)) * 9;
-        Inventory inv = Bukkit.createInventory(p, size, ChatColor.AQUA + TITLE_MEMBERS);
+        Inventory inv = Bukkit.createInventory(p, size, Msg.c("&b" + TITLE_MEMBERS));
         for (UUID memberId : w.members()) {
             inv.addItem(memberHead(memberId, w, false));
         }
@@ -102,7 +122,7 @@ public class WardMenuListener implements Listener {
             return;
         }
         int size = Math.min(6, (int) Math.ceil(w.members().size() / 9.0)) * 9;
-        Inventory inv = Bukkit.createInventory(p, size, ChatColor.RED + TITLE_REMOVE);
+        Inventory inv = Bukkit.createInventory(p, size, Msg.c("&c" + TITLE_REMOVE));
         for (UUID memberId : w.members()) {
             inv.addItem(memberHead(memberId, w, true));
         }
@@ -129,7 +149,7 @@ public class WardMenuListener implements Listener {
     public void onClick(InventoryClickEvent e) {
         HumanEntity he = e.getWhoClicked();
         if (!(he instanceof Player p)) return;
-        String title = ChatColor.stripColor(e.getView().getTitle());
+        String title = org.bukkit.ChatColor.stripColor(e.getView().getTitle());
         if (title == null) return;
 
         if (title.equalsIgnoreCase(TITLE_MAIN)) {
@@ -170,7 +190,14 @@ public class WardMenuListener implements Listener {
             }
             case "rename" -> {
                 pendingRename.put(p.getUniqueId(), w.id());
-                p.sendMessage(Msg.c("&eType a new name for this ward in chat."));
+                p.sendMessage(Msg.c("&eType a new name for this ward in chat. Supports &c&kcolor &rcodes &eand &#FF5500hex&e."));
+                p.closeInventory();
+            }
+            case "set_entry_message" -> {
+                pendingMessage.put(p.getUniqueId(), w.id());
+                p.sendMessage(Msg.c("&eType the entry message visitors will see when entering this ward."));
+                p.sendMessage(Msg.c("&7Supports &a&lcolor codes &7and &#FF5500hex&7. Placeholders: &f%ward% %owner% %tier% %radius%"));
+                p.sendMessage(Msg.c("&7Type &cclear &7to remove the custom message."));
                 p.closeInventory();
             }
             case "add_member" -> {
@@ -202,6 +229,19 @@ public class WardMenuListener implements Listener {
             case "features" -> {
                 p.closeInventory();
                 Bukkit.getScheduler().runTask(plugin, () -> SuperWardMenuListener.openFeatureList(plugin, p, w));
+            }
+            default -> {
+                // Per-ward flag toggles: action = "flag:<flagId>"
+                if (action.startsWith("flag:")) {
+                    String flagId = action.substring(5);
+                    WardFlag.fromId(flagId).ifPresent(flag -> {
+                        boolean newState = !w.hasFlag(flag);
+                        manager.setFlag(w.id(), flag, newState);
+                        p.sendMessage(Msg.c(flag.displayName() + " &7set to "
+                                + (newState ? "&aON" : "&cOFF") + "&7 for this ward."));
+                        Bukkit.getScheduler().runTask(plugin, () -> openMain(plugin, p, w));
+                    });
+                }
             }
         }
     }
@@ -285,20 +325,38 @@ public class WardMenuListener implements Listener {
     // ── Chat listener (add member only) ──────────────────────────────────────
 
     @EventHandler
-    public void onChat(AsyncPlayerChatEvent e) {
+    public void onChat(org.bukkit.event.player.AsyncPlayerChatEvent e) {
         Player player = e.getPlayer();
         UUID uid = player.getUniqueId();
+        String messageText = e.getMessage().trim();
 
         UUID renameWid = pendingRename.remove(uid);
         if (renameWid != null) {
             e.setCancelled(true);
-            String newName = e.getMessage().trim();
             Bukkit.getScheduler().runTask(plugin, () -> {
                 Ward w = manager.get(renameWid);
                 if (w == null) return;
-                w.setName(newName);
-                manager.save(w);
-                player.sendMessage(Msg.c("&aWard renamed to: &f" + newName));
+                manager.renameWard(renameWid, messageText);
+                player.sendMessage(Msg.c("&aWard renamed to: " + messageText));
+            });
+            return;
+        }
+
+        UUID msgWid = pendingMessage.remove(uid);
+        if (msgWid != null) {
+            e.setCancelled(true);
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                Ward w = manager.get(msgWid);
+                if (w == null) return;
+                if (messageText.equalsIgnoreCase("clear")) {
+                    w.setEntryMessage("");
+                    manager.save(w);
+                    player.sendMessage(Msg.c("&aEntry message cleared."));
+                } else {
+                    w.setEntryMessage(messageText);
+                    manager.save(w);
+                    player.sendMessage(Msg.c("&aEntry message set: " + messageText));
+                }
             });
             return;
         }
@@ -307,8 +365,7 @@ public class WardMenuListener implements Listener {
         if (addWid == null) return;
 
         e.setCancelled(true);
-        String name = e.getMessage().trim();
-        OfflinePlayer op = Bukkit.getOfflinePlayer(name);
+        OfflinePlayer op = Bukkit.getOfflinePlayer(messageText);
         if (op.getUniqueId() == null) {
             player.sendMessage(Msg.c("&cUnknown player."));
             return;
@@ -324,7 +381,7 @@ public class WardMenuListener implements Listener {
                 return;
             }
             manager.addMember(wardId, memberUuid);
-            player.sendMessage(Msg.c("&aAdded &f" + name + "&a as member."));
+            player.sendMessage(Msg.c("&aAdded &f" + messageText + "&a as member."));
         });
     }
 }

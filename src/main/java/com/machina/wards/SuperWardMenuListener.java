@@ -1,7 +1,7 @@
 package com.machina.wards;
 
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
@@ -31,7 +31,7 @@ public class SuperWardMenuListener implements Listener {
     // ── Feature list ─────────────────────────────────────────────────────────
 
     public static void openFeatureList(MachinaWards plugin, Player p, Ward w) {
-        Inventory inv = Bukkit.createInventory(p, 54, ChatColor.DARK_PURPLE + TITLE_FEATURES);
+        Inventory inv = Bukkit.createInventory(p, 54, Msg.c("&5" + TITLE_FEATURES));
 
         // Border
         ItemStack pane = pane(plugin);
@@ -62,7 +62,7 @@ public class SuperWardMenuListener implements Listener {
 
     private static void openFeatureSub(MachinaWards plugin, Player p, Ward w, WardFeature f) {
         Inventory inv = Bukkit.createInventory(p, 27,
-                ChatColor.DARK_PURPLE + TITLE_FEAT_SUB + f.id());
+                Msg.c("&5" + TITLE_FEAT_SUB + f.id()));
 
         // Border
         ItemStack pane = pane(plugin);
@@ -107,14 +107,13 @@ public class SuperWardMenuListener implements Listener {
     public void onClick(InventoryClickEvent e) {
         HumanEntity he = e.getWhoClicked();
         if (!(he instanceof Player p)) return;
-        String raw = e.getView().getTitle();
-        if (raw == null) return;
-        String stripped = ChatColor.stripColor(raw);
+        String title = org.bukkit.ChatColor.stripColor(e.getView().getTitle());
+        if (title == null) return;
 
-        if (stripped.equalsIgnoreCase(TITLE_FEATURES)) {
+        if (title.equalsIgnoreCase(TITLE_FEATURES)) {
             handleListClick(e, p);
-        } else if (stripped.startsWith(TITLE_FEAT_SUB)) {
-            handleSubClick(e, p, stripped.substring(TITLE_FEAT_SUB.length()));
+        } else if (title.startsWith(TITLE_FEAT_SUB)) {
+            handleSubClick(e, p, title.substring(TITLE_FEAT_SUB.length()));
         }
     }
 
@@ -173,7 +172,7 @@ public class SuperWardMenuListener implements Listener {
                 case "toggle" -> {
                     boolean now = !w.hasFeature(f);
                     plugin.manager().setFeature(w.id(), f, now);
-                    p.sendMessage(Msg.c("&5" + ChatColor.stripColor(Msg.c(f.displayName()))
+                    p.sendMessage(Msg.c("&5" + org.bukkit.ChatColor.stripColor(Msg.c(f.displayName()))
                             + ": " + (now ? "&aON" : "&cOFF")));
                     Bukkit.getScheduler().runTask(plugin, () -> openFeatureSub(plugin, p, w, f));
                 }
@@ -181,15 +180,15 @@ public class SuperWardMenuListener implements Listener {
                     List<String> logs = plugin.manager().getFeatureLogs(w.id(), f, 20);
                     p.closeInventory();
                     if (logs.isEmpty()) {
-                        p.sendMessage(Msg.c("&7No logs for &5" + ChatColor.stripColor(Msg.c(f.displayName())) + "&7."));
+                        p.sendMessage(Msg.c("&7No logs for &5" + org.bukkit.ChatColor.stripColor(Msg.c(f.displayName())) + "&7."));
                     } else {
-                        p.sendMessage(Msg.c("&5--- " + ChatColor.stripColor(Msg.c(f.displayName())) + " Logs ---"));
+                        p.sendMessage(Msg.c("&5--- " + org.bukkit.ChatColor.stripColor(Msg.c(f.displayName())) + " Logs ---"));
                         logs.forEach(line -> p.sendMessage(Msg.c("&7" + line)));
                     }
                 }
                 case "clear_logs" -> {
                     plugin.manager().clearFeatureLogs(w.id(), f);
-                    p.sendMessage(Msg.c("&aCleared &5" + ChatColor.stripColor(Msg.c(f.displayName())) + "&a logs."));
+                    p.sendMessage(Msg.c("&aCleared &5" + org.bukkit.ChatColor.stripColor(Msg.c(f.displayName())) + "&a logs."));
                     Bukkit.getScheduler().runTask(plugin, () -> openFeatureSub(plugin, p, w, f));
                 }
             }
@@ -203,7 +202,7 @@ public class SuperWardMenuListener implements Listener {
         ItemMeta m = it.getItemMeta();
         if (m == null) return it;
         String tierName = plugin.getConfig().getString("wards." + w.tier() + ".display_name", w.tier());
-        m.setDisplayName(Msg.c("&5&l" + ChatColor.stripColor(Msg.c(tierName))));
+        m.setDisplayName(Msg.c("&5&l" + org.bukkit.ChatColor.stripColor(Msg.c(tierName))));
         m.setLore(List.of(
                 Msg.c("&7ID: &f" + w.shortId()),
                 Msg.c("&7Radius: &f" + w.radius()),

@@ -18,9 +18,10 @@ public class SqliteStore extends AbstractStore {
     }
 
     @Override
-    protected String insertOrIgnore() {
-        return "INSERT OR IGNORE";
-    }
+    protected String insertOrIgnore() { return "INSERT OR IGNORE"; }
+
+    @Override
+    protected String idColumn() { return "INTEGER PRIMARY KEY AUTOINCREMENT"; }
 
     @Override
     protected void afterConnect(Statement s) throws SQLException {

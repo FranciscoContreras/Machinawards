@@ -10,6 +10,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 
 import java.util.List;
 
@@ -54,16 +55,13 @@ public class SuperWardEventListener implements Listener {
         List<Ward> wards = plugin.manager().findAllAt(victim.getLocation());
         if (wards.isEmpty()) return;
 
-        // Determine killer
-        Entity rawKiller = victim.getKiller(); // Player killer (convenience field)
-        Entity killer = null;
-        if (victim.getLastDamageCause() instanceof org.bukkit.event.entity.EntityDamageByEntityEvent ede) {
-            killer = ede.getDamager();
-        }
+        // Resolve killer using Pattern Matching
+        Entity killer = (victim.getLastDamageCause() instanceof EntityDamageByEntityEvent ede) 
+                ? ede.getDamager() 
+                : null;
 
         boolean victimIsPlayer = victim instanceof Player;
-        boolean killerIsMob    = killer != null && !(killer instanceof Player) && killer instanceof LivingEntity;
-        boolean killerIsPlayer = killer instanceof Player;
+        boolean killerIsMob    = killer instanceof LivingEntity && !(killer instanceof Player);
 
         String victimName  = victimIsPlayer ? ((Player) victim).getName() : friendlyName(victim);
         String killerName  = killer != null ? friendlyName(killer) : "unknown";

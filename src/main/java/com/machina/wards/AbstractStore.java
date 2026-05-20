@@ -28,6 +28,8 @@ public abstract class AbstractStore implements DataStore {
 
     protected abstract Connection openConnection() throws SQLException;
     protected abstract String insertOrIgnore();
+    /** DDL snippet for auto-increment PK: "INTEGER PRIMARY KEY AUTOINCREMENT" (SQLite) or "INT AUTO_INCREMENT PRIMARY KEY" (MySQL). */
+    protected abstract String idColumn();
     /** Called right after a new connection is opened (e.g. PRAGMA journal_mode). */
     protected void afterConnect(Statement s) throws SQLException {}
 
@@ -75,7 +77,7 @@ public abstract class AbstractStore implements DataStore {
                 "trust_level TEXT DEFAULT 'member'," +
                 "PRIMARY KEY(ward_id, uuid))");
         s.executeUpdate("CREATE TABLE IF NOT EXISTS logs (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                "id " + idColumn() + "," +
                 "ward_id TEXT," +
                 "intruder TEXT," +
                 "name TEXT," +
@@ -85,7 +87,7 @@ public abstract class AbstractStore implements DataStore {
                 "feature TEXT," +
                 "PRIMARY KEY(ward_id, feature))");
         s.executeUpdate("CREATE TABLE IF NOT EXISTS feature_logs (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+                "id " + idColumn() + "," +
                 "ward_id TEXT," +
                 "feature TEXT," +
                 "message TEXT," +

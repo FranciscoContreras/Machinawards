@@ -29,5 +29,10 @@ final class Msg {
         return LegacyComponentSerializer.legacyAmpersand().deserialize(c(s));
     }
 
+    // Alias — used throughout the codebase.
+    static Component comp(String s) {
+        return component(s);
+    }
+
     private Msg() {}
 }

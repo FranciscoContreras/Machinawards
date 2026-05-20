@@ -89,6 +89,15 @@ public class RecipeLoader {
         }
     }
 
+    public void unregisterAll() {
+        ConfigurationSection ws = plugin.getConfig().getConfigurationSection("wards");
+        if (ws == null) return;
+        for (String tier : ws.getKeys(false)) {
+            NamespacedKey key = new NamespacedKey(plugin, "recipe_" + tier.toLowerCase(Locale.ROOT));
+            Bukkit.removeRecipe(key);
+        }
+    }
+
     public ItemStack createWardItem(String tier, Material mat, String display) {
         ItemStack it = new ItemStack(mat);
         ItemMeta meta = it.getItemMeta();

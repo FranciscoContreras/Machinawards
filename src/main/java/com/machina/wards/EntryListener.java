@@ -1,13 +1,17 @@
 package com.machina.wards;
 
-import net.md_5.bungee.api.ChatMessageType;
-import net.md_5.bungee.api.chat.TextComponent;
+import net.kyori.adventure.audience.Audience;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.OfflinePlayer;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerMoveEvent;
+
+import java.util.Locale;
 
 import java.util.UUID;
 
@@ -33,43 +37,69 @@ public class EntryListener implements Listener {
         Player p = e.getPlayer();
         Location to = e.getTo();
         if (to.getWorld() == null) return;
-        String world = to.getWorld().getName();
 
-        long now = System.currentTimeMillis();
+        // O(1) chunk-index lookup instead of iterating all wards in the world
+        Ward w = manager.findAt(to);
+        if (w == null) return;
+        if (w.owner().equals(p.getUniqueId())) return;
+        if (w.members().contains(p.getUniqueId())) return;
+
+        long now  = System.currentTimeMillis();
         long cdMs = plugin.getConfig().getLong("alerts.cooldown_ms", 90_000);
+        long last = manager.lastAlertAt(w.id(), p.getUniqueId());
+        if (last != 0L && now - last < cdMs) return;
 
-        for (UUID id : manager.idsInWorld(world)) {
-            Ward w = manager.get(id);
-            if (w == null) continue;
-            if (!manager.contains(w, to)) continue;
-            if (w.owner().equals(p.getUniqueId())) continue;
-            if (w.members().contains(p.getUniqueId())) continue;
+        manager.setLastAlert(w.id(), p.getUniqueId(), now);
+        manager.logEntry(w.id(), p.getUniqueId(), p.getName());
 
-            long last = manager.lastAlertAt(w.id(), p.getUniqueId());
-            if (last != 0L && now - last < cdMs) continue;
+        String entrySnd = plugin.getConfig().getString("sounds.entry_alert", "");
+        if (!entrySnd.isEmpty()) {
+            try {
+                Sound snd = Sound.valueOf(entrySnd.toUpperCase(Locale.ROOT));
+                p.playSound(p.getLocation(), snd, 0.5f, 1.2f);
+            } catch (IllegalArgumentException ignored) {}
+        }
 
-            manager.setLastAlert(w.id(), p.getUniqueId(), now);
-            manager.logEntry(w.id(), p.getUniqueId(), p.getName());
+        String wardDisplay = w.name().isEmpty() ? ("Ward #" + w.shortId()) : w.name();
+        OfflinePlayer ownerOp = Bukkit.getOfflinePlayer(w.owner());
+        String ownerName = ownerOp.getName() != null ? ownerOp.getName() : w.shortId();
 
-            if (!w.notifyEnabled()) continue;
+        // ── Visitor action bar warning ────────────────────────────────────────
+        if (plugin.getConfig().getBoolean("entry.show_warning_to_visitor", true)) {
+            String fmt = w.entryMessage().isEmpty()
+                    ? plugin.getConfig().getString("entry.warning_format",
+                            "&c⚠ Entering &f%ward% &c— owned by &f%owner%")
+                    : w.entryMessage();
+            String warningRaw = fmt
+                    .replace("%ward%",   wardDisplay)
+                    .replace("%owner%",  ownerName)
+                    .replace("%tier%",   w.tier())
+                    .replace("%radius%", String.valueOf(w.radius()));
+            ((Audience) p).sendActionBar(Msg.comp(warningRaw));
+        }
 
-            String title = Msg.c(plugin.getConfig().getString("alerts.title_format", "&6Ward alert"));
-            String action = Msg.c(plugin.getConfig().getString("alerts.actionbar_format",
-                    "&e%player% entered your ward").replace("%player%", p.getName()));
+        if (!w.notifyEnabled()) return;
 
-            Player owner = Bukkit.getPlayer(w.owner());
-            if (owner != null && owner.isOnline()) {
-                owner.sendTitle(title, "", 5, 30, 10);
-                owner.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(action));
-                owner.sendMessage(action);
-            }
-            for (UUID u : w.members()) {
-                Player m = Bukkit.getPlayer(u);
-                if (m != null && m.isOnline()) {
-                    m.sendTitle(title, "", 5, 30, 10);
-                    m.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent(action));
-                    m.sendMessage(action);
-                }
+        // ── Owner / member alerts ─────────────────────────────────────────────
+        String titleRaw  = plugin.getConfig().getString("alerts.title_format", "&6Ward alert");
+        String actionRaw = plugin.getConfig().getString("alerts.actionbar_format",
+                "&e%player% entered &f%ward%")
+                .replace("%player%", p.getName())
+                .replace("%ward%",   wardDisplay)
+                .replace("%owner%",  ownerName);
+
+        Player owner = Bukkit.getPlayer(w.owner());
+        if (owner != null && owner.isOnline()) {
+            owner.sendTitle(Msg.c(titleRaw), "", 5, 30, 10);
+            ((Audience) owner).sendActionBar(Msg.comp(actionRaw));
+            owner.sendMessage(Msg.c(actionRaw));
+        }
+        for (UUID u : w.members()) {
+            Player m = Bukkit.getPlayer(u);
+            if (m != null && m.isOnline()) {
+                m.sendTitle(Msg.c(titleRaw), "", 5, 30, 10);
+                ((Audience) m).sendActionBar(Msg.comp(actionRaw));
+                m.sendMessage(Msg.c(actionRaw));
             }
         }
     }

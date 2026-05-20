@@ -1,8 +1,11 @@
 package com.machina.wards;
 
+import net.kyori.adventure.audience.Audience;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
@@ -15,14 +18,18 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.Set;
+import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class WardBlocksListener implements Listener {
 
     private final MachinaWards plugin;
     private final WardManager manager;
     private final NamespacedKey tierKey;
+    private final Map<UUID, UUID> pendingPickup     = new ConcurrentHashMap<>();
+    private final Map<UUID, Long> pendingPickupTime  = new ConcurrentHashMap<>();
 
     public WardBlocksListener(MachinaWards plugin, WardManager manager, NamespacedKey tierKey) {
         this.plugin = plugin;
@@ -81,6 +88,7 @@ public class WardBlocksListener implements Listener {
                 System.currentTimeMillis());
         manager.add(w);
 
+        playSound(p, "ward_place");
         p.sendMessage(Msg.c("&aWard placed. Tier: &f" + tier + " &7radius &f" + radius));
         p.sendTitle(Msg.c("&6Ward placed"), "", 5, 30, 10);
     }
@@ -92,24 +100,19 @@ public class WardBlocksListener implements Listener {
         Location loc = b.getLocation();
         if (loc.getWorld() == null) return;
 
-        String world = loc.getWorld().getName();
-        Set<UUID> ids = manager.idsInWorld(world);
-        for (UUID id : ids) {
-            Ward w = manager.get(id);
-            if (w == null) continue;
-            if (w.bx() == loc.getBlockX() && w.by() == loc.getBlockY() && w.bz() == loc.getBlockZ()) {
-                if (!p.getUniqueId().equals(w.owner()) && !p.hasPermission("wards.admin")) {
-                    p.sendMessage(Msg.c("&cOnly the owner or admin can break the ward block."));
-                    e.setCancelled(true);
-                    return;
-                }
-                manager.delete(w.id());
-                loc.getWorld().spawnParticle(Particle.END_ROD,
-                        loc.clone().add(0.5, 0.5, 0.5), 25, 0.5, 0.5, 0.5, 0.05);
-                p.sendMessage(Msg.c("&eWard removed."));
-                return;
-            }
+        Ward w = manager.findWardByBlock(loc);
+        if (w == null) return;
+
+        if (!p.getUniqueId().equals(w.owner()) && !p.hasPermission("wards.admin")) {
+            p.sendMessage(Msg.c("&cOnly the owner or admin can break the ward block."));
+            e.setCancelled(true);
+            return;
         }
+        manager.delete(w.id());
+        loc.getWorld().spawnParticle(Particle.END_ROD,
+                loc.clone().add(0.5, 0.5, 0.5), 25, 0.5, 0.5, 0.5, 0.05);
+        playSound(p, "ward_break");
+        p.sendMessage(Msg.c("&eWard removed."));
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -119,25 +122,35 @@ public class WardBlocksListener implements Listener {
 
         Location loc = e.getClickedBlock().getLocation();
         if (loc.getWorld() == null) return;
-        String world = loc.getWorld().getName();
-        for (UUID id : manager.idsInWorld(world)) {
-            Ward w = manager.get(id);
-            if (w == null) continue;
-            if (w.bx() != loc.getBlockX() || w.by() != loc.getBlockY() || w.bz() != loc.getBlockZ()) continue;
 
-            Player p = e.getPlayer();
-            boolean canManage = p.getUniqueId().equals(w.owner()) || p.hasPermission("wards.admin");
-            boolean canView   = canManage || w.members().contains(p.getUniqueId());
+        Ward w = manager.findWardByBlock(loc);
+        if (w == null) return;
 
-            e.setCancelled(true);
-            if (!canView) return;
+        Player p = e.getPlayer();
+        boolean canManage = p.getUniqueId().equals(w.owner()) || p.hasPermission("wards.admin");
+        boolean canView   = canManage || w.members().contains(p.getUniqueId());
 
-            if (p.isSneaking() && canManage) {
+        e.setCancelled(true);
+        if (!canView) return;
+
+        if (p.isSneaking() && canManage) {
+            long confirmMs = plugin.getConfig().getLong("pickup.confirm_ms", 5000);
+            UUID pid = p.getUniqueId();
+            UUID pendingId = pendingPickup.get(pid);
+            Long pendingTime = pendingPickupTime.get(pid);
+            if (w.id().equals(pendingId) && pendingTime != null
+                    && System.currentTimeMillis() - pendingTime <= confirmMs) {
+                pendingPickup.remove(pid);
+                pendingPickupTime.remove(pid);
                 pickUpWard(p, w, loc);
-            } else if (!p.isSneaking()) {
-                WardMenuListener.openMain(plugin, p, w);
+            } else {
+                pendingPickup.put(pid, w.id());
+                pendingPickupTime.put(pid, System.currentTimeMillis());
+                String wardLabel = w.name().isEmpty() ? w.shortId() : w.name();
+                p.sendMessage(Msg.c("&eSneak+click again within &f" + (confirmMs / 1000) + "s &eto pick up &f" + wardLabel + "&e."));
             }
-            return;
+        } else if (!p.isSneaking()) {
+            WardMenuListener.openMain(plugin, p, w);
         }
     }
 
@@ -159,6 +172,16 @@ public class WardBlocksListener implements Listener {
         if (!leftover.isEmpty()) {
             loc.getWorld().dropItemNaturally(loc.clone().add(0.5, 1, 0.5), wardItem);
         }
+        playSound(p, "ward_pickup");
         p.sendMessage(Msg.c("&aWard picked up. Place it again to re-activate."));
+    }
+
+    private void playSound(Player p, String key) {
+        String name = plugin.getConfig().getString("sounds." + key, "");
+        if (name.isEmpty()) return;
+        try {
+            Sound s = Sound.valueOf(name.toUpperCase(Locale.ROOT));
+            p.playSound(p.getLocation(), s, 1f, 1f);
+        } catch (IllegalArgumentException ignored) {}
     }
 }

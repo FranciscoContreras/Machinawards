@@ -12,6 +12,7 @@ public interface DataStore {
     void shutdown();
 
     // ── Bulk reads (called once on loadAll) ──────────────────────────────────
+    List<Ward> loadWards();
     /** Returns wardId → (memberId → trustLevel string) */
     Map<UUID, Map<UUID, String>> loadAllMembers();
     Map<UUID, Set<String>> loadAllFeatures();

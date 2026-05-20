@@ -12,10 +12,11 @@ import java.util.List;
 public class WardTab implements TabCompleter {
 
     private static final List<String> SUBCOMMANDS = List.of(
-            "help", "reload", "shop", "list", "tp", "addmember", "removemember", "admin"
+            "help", "reload", "shop", "list", "tp", "compass", "transfer",
+            "addmember", "removemember", "info", "nearby", "admin"
     );
 
-    private static final List<String> ADMIN_SUBCOMMANDS = List.of("list", "delete");
+    private static final List<String> ADMIN_SUBCOMMANDS = List.of("list", "delete", "tp", "stats", "migrate");
 
     private final WardManager manager;
 
@@ -28,34 +29,109 @@ public class WardTab implements TabCompleter {
         if (args.length == 1) {
             return filter(SUBCOMMANDS, args[0]);
         }
+
+        // /ward tp <id|name>
+        if (args.length == 2 && args[0].equalsIgnoreCase("tp")) {
+            List<String> suggestions = new ArrayList<>();
+            if (sender instanceof Player p) {
+                Iterable<Ward> source = p.hasPermission("wards.admin")
+                        ? manager.all() : manager.wardsOwnedBy(p.getUniqueId());
+                for (Ward w : source) {
+                    suggestions.add(w.shortId());
+                    if (!w.name().isEmpty()) suggestions.add(w.name());
+                }
+            }
+            return filter(suggestions, args[1]);
+        }
+
+        // /ward compass [id|name]
+        if (args.length == 2 && args[0].equalsIgnoreCase("compass")) {
+            List<String> suggestions = new ArrayList<>();
+            if (sender instanceof Player p) {
+                Iterable<Ward> source = p.hasPermission("wards.admin")
+                        ? manager.all() : manager.wardsOwnedBy(p.getUniqueId());
+                for (Ward w : source) {
+                    suggestions.add(w.shortId());
+                    if (!w.name().isEmpty()) suggestions.add(w.name());
+                }
+            }
+            return filter(suggestions, args[1]);
+        }
+
+        // /ward transfer <player>  or  /ward transfer <id> <player>
+        if (args[0].equalsIgnoreCase("transfer")) {
+            if (args.length == 2) {
+                // Could be a player name or a ward ID — suggest online players
+                List<String> names = new ArrayList<>();
+                for (Player p : Bukkit.getOnlinePlayers()) names.add(p.getName());
+                return filter(names, args[1]);
+            }
+            if (args.length == 3) {
+                // arg[1] is ward id, arg[2] is player
+                List<String> names = new ArrayList<>();
+                for (Player p : Bukkit.getOnlinePlayers()) names.add(p.getName());
+                return filter(names, args[2]);
+            }
+        }
+
+        // /ward addmember <player>  /ward removemember <player>
         if (args.length == 2 && (args[0].equalsIgnoreCase("addmember") || args[0].equalsIgnoreCase("removemember"))) {
             List<String> names = new ArrayList<>();
             for (Player p : Bukkit.getOnlinePlayers()) names.add(p.getName());
             return filter(names, args[1]);
         }
-        if (args.length == 2 && args[0].equalsIgnoreCase("tp")) {
-            List<String> ids = new ArrayList<>();
-            if (sender instanceof Player p) {
-                for (Ward w : manager.all()) {
-                    if (w.owner().equals(p.getUniqueId()) || sender.hasPermission("wards.admin"))
-                        ids.add(w.shortId());
-                }
-            }
-            return filter(ids, args[1]);
-        }
+
+        // /ward admin <sub>
         if (args.length == 2 && args[0].equalsIgnoreCase("admin")) {
             return filter(ADMIN_SUBCOMMANDS, args[1]);
         }
+
+        // /ward admin list <player>
         if (args.length == 3 && args[0].equalsIgnoreCase("admin") && args[1].equalsIgnoreCase("list")) {
             List<String> names = new ArrayList<>();
             for (Player p : Bukkit.getOnlinePlayers()) names.add(p.getName());
             return filter(names, args[2]);
         }
+
+        // /ward admin delete <id|name>
         if (args.length == 3 && args[0].equalsIgnoreCase("admin") && args[1].equalsIgnoreCase("delete")) {
             List<String> ids = new ArrayList<>();
-            for (Ward w : manager.all()) ids.add(w.shortId());
+            for (Ward w : manager.all()) {
+                ids.add(w.shortId());
+                if (!w.name().isEmpty()) ids.add(w.name());
+            }
             return filter(ids, args[2]);
         }
+
+        // /ward admin tp <id|name>
+        if (args.length == 3 && args[0].equalsIgnoreCase("admin") && args[1].equalsIgnoreCase("tp")) {
+            List<String> ids = new ArrayList<>();
+            for (Ward w : manager.all()) {
+                ids.add(w.shortId());
+                if (!w.name().isEmpty()) ids.add(w.name());
+            }
+            return filter(ids, args[2]);
+        }
+
+        // /ward admin migrate <target>
+        if (args.length == 3 && args[0].equalsIgnoreCase("admin") && args[1].equalsIgnoreCase("migrate")) {
+            return filter(List.of("mysql"), args[2]);
+        }
+
+        // /ward info <id|name>
+        if (args.length == 2 && args[0].equalsIgnoreCase("info")) {
+            List<String> suggestions = new ArrayList<>();
+            if (sender instanceof Player p) {
+                Iterable<Ward> source = p.hasPermission("wards.admin")
+                        ? manager.all() : manager.wardsOwnedBy(p.getUniqueId());
+                for (Ward w : source) {
+                    suggestions.add(w.shortId());
+                    if (!w.name().isEmpty()) suggestions.add(w.name());
+                }
+            }
+            return filter(suggestions, args[1]);
+        }
+
         return List.of();
     }
 
