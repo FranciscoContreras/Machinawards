@@ -11,13 +11,22 @@ OUT_DIR=out
 JAR_NAME=MachinaWards.jar
 PLUGIN_DIR="$SCRIPT_DIR/test-server/plugins"
 
+# Build classpath
+CP="$SPIGOT_JAR:$VAULT_JAR"
+
+# Add libs folder (Adventure API)
+if [ -d "$SCRIPT_DIR/libs" ]; then
+  ADVENTURE_LIBS=$(find "$SCRIPT_DIR/libs" -name "*.jar" | tr '\n' ':')
+  CP="$CP:$ADVENTURE_LIBS"
+fi
+
 # Clean and create out directory
 rm -rf "$OUT_DIR"
 mkdir -p "$OUT_DIR"
 
 echo "Compiling sources..."
 javac --release 21 \
-  -cp "$SPIGOT_JAR:$VAULT_JAR" \
+  -cp "$CP" \
   -d "$OUT_DIR" \
   $(find $SRC_DIR -name "*.java")
 
