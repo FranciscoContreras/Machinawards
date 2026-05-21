@@ -45,6 +45,17 @@ protection:
   pvp: true           # block outsiders from attacking players inside a ward (per-ward flag: allow_pvp)
   entity_damage: true # block outsiders from damaging animals/mobs inside a ward (per-ward flag: allow_mob_damage)
   crop_trample: true  # block non-members from trampling farmland inside a ward
+  bucket_pour: true   # block non-members from pouring lava/water buckets into wards
+  entity_place: true  # block non-members from placing armor stands, boats, minecarts
+  vehicle_destroy: true # block non-members from damaging vehicles inside wards
+  block_spread: true  # block fire/sculk/vine spreading INTO a ward from outside
+  spawner_egg: true   # Purpur only: block non-members from changing spawner type inside wards
+
+trust_levels:
+  enabled: true       # if false, VISITOR members behave identically to MEMBER (full access)
+
+members:
+  notify_on_add: true # notify players when they are added or removed as ward members
 
 sounds:
   ward_place: BLOCK_BEACON_ACTIVATE

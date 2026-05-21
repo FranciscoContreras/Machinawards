@@ -53,6 +53,7 @@ public class WardCommand implements CommandExecutor {
             if (!sender.hasPermission("wards.admin")) { sender.sendMessage(Msg.c("&cNo permission.")); return true; }
             plugin.reloadConfig();
             manager.reloadShape();
+            plugin.reloadParticleTask();
             RecipeLoader rl = new RecipeLoader(plugin, plugin.tierKey(), manager);
             rl.unregisterAll();
             rl.registerAll();
@@ -120,7 +121,6 @@ public class WardCommand implements CommandExecutor {
                     p.sendMessage(Msg.c("&cOnly the owner or admin can target this ward.")); return true;
                 }
             } else {
-                // Nearest owned ward in the same world — use owner index
                 double best = Double.MAX_VALUE;
                 for (Ward w : manager.wardsOwnedBy(p.getUniqueId())) {
                     if (!w.world().equals(p.getWorld().getName())) continue;
@@ -136,18 +136,16 @@ public class WardCommand implements CommandExecutor {
             String wardLabel = target.name().isEmpty() ? target.shortId() : target.name();
             p.sendMessage(Msg.c("&aCompass pointing to ward &f" + wardLabel + "&a. Use any compass to navigate."));
             return true;
-            }
+        }
 
-            // ── transfer ──────────────────────────────────────────────────────────
+        // ── transfer ──────────────────────────────────────────────────────────
         if (args[0].equalsIgnoreCase("transfer") && args.length >= 2) {
             Ward w;
             String targetName;
             if (args.length >= 3) {
-                // /ward transfer <id|name> <player>
                 w = manager.findWard(args[1]);
                 targetName = args[2];
             } else {
-                // /ward transfer <player> — stand in ward
                 w = manager.findAt(p.getLocation());
                 targetName = args[1];
             }
@@ -158,25 +156,23 @@ public class WardCommand implements CommandExecutor {
 
             final Ward wardToTransfer = w;
             final String senderName = p.getName();
-            final UUID senderId = p.getUniqueId();
 
-            OfflinePlayer newOwnerOp = Bukkit.getOfflinePlayer(targetName);
-            if (newOwnerOp == null) newOwnerOp = Bukkit.getPlayerExact(targetName);
-            if (newOwnerOp == null) {
+            // Try online player first, fall back to offline (cached on Paper/Purpur)
+            Player onlineTarget = Bukkit.getPlayerExact(targetName);
+            OfflinePlayer newOwnerOp = onlineTarget != null ? onlineTarget : Bukkit.getOfflinePlayer(targetName);
+            if (newOwnerOp.getUniqueId() == null && onlineTarget == null) {
                 p.sendMessage(Msg.c("&cPlayer not found (must have joined this server): " + targetName));
                 return true;
             }
-            final OfflinePlayer finalNewOwnerOp = newOwnerOp;
-            {
-                UUID newOwnerId = finalNewOwnerOp.getUniqueId();
-                manager.transferOwner(wardToTransfer.id(), newOwnerId);
-                String ownerDisplay = finalNewOwnerOp.getName() != null ? finalNewOwnerOp.getName() : targetName;
-                String wardLabel = wardToTransfer.name().isEmpty() ? wardToTransfer.shortId() : wardToTransfer.name();
-                p.sendMessage(Msg.c("&aWard &f" + wardLabel + "&a transferred to &f" + ownerDisplay + "&a."));
-                Player newOnline = Bukkit.getPlayer(newOwnerId);
-                if (newOnline != null)
-                    newOnline.sendMessage(Msg.c("&f" + senderName + "&a transferred ward &f" + wardLabel + "&a to you."));
-            }
+
+            UUID newOwnerId = newOwnerOp.getUniqueId();
+            manager.transferOwner(wardToTransfer.id(), newOwnerId);
+            String ownerDisplay = newOwnerOp.getName() != null ? newOwnerOp.getName() : targetName;
+            String label = wardToTransfer.name().isEmpty() ? wardToTransfer.shortId() : wardToTransfer.name();
+            p.sendMessage(Msg.c("&aWard &f" + label + "&a transferred to &f" + ownerDisplay + "&a."));
+            Player newOnline = Bukkit.getPlayer(newOwnerId);
+            if (newOnline != null)
+                newOnline.sendMessage(Msg.c("&f" + senderName + "&a transferred ward &f" + label + "&a to you."));
             return true;
         }
 
@@ -193,11 +189,11 @@ public class WardCommand implements CommandExecutor {
                 int count = 0;
                 for (Ward w : manager.all()) {
                     if (filterName != null) {
-                        OfflinePlayer op = Bukkit.getOfflinePlayer(w.owner());
+                        OfflinePlayer op = Bukkit.getOfflinePlayer(w.owner()); // UUID overload — safe
                         String ownerName = op.getName();
                         if (ownerName == null || !ownerName.toLowerCase(java.util.Locale.ROOT).equals(filterName)) continue;
                     }
-                    OfflinePlayer op = Bukkit.getOfflinePlayer(w.owner());
+                    OfflinePlayer op = Bukkit.getOfflinePlayer(w.owner()); // UUID overload — safe
                     String ownerName = op.getName() != null ? op.getName() : w.owner().toString().substring(0, 8);
                     String nameStr = w.name().isEmpty() ? "" : " \"" + w.name() + "\"";
                     sender.sendMessage(Msg.c("&7[&f" + w.shortId() + "&7]" + nameStr + " &f" + w.tier()
@@ -287,7 +283,7 @@ public class WardCommand implements CommandExecutor {
                 w = manager.findAt(p.getLocation());
                 if (w == null) { p.sendMessage(Msg.c("&cYou are not inside a ward.")); return true; }
             }
-            OfflinePlayer ownerOp = Bukkit.getOfflinePlayer(w.owner());
+            OfflinePlayer ownerOp = Bukkit.getOfflinePlayer(w.owner()); // UUID overload — safe
             String ownerName = ownerOp.getName() != null ? ownerOp.getName() : w.owner().toString().substring(0, 8);
             String wardLabel = w.name().isEmpty() ? w.shortId() : w.name() + " &7[" + w.shortId() + "]";
             boolean isOwner  = w.owner().equals(p.getUniqueId());
@@ -326,7 +322,7 @@ public class WardCommand implements CommandExecutor {
             p.sendMessage(Msg.c("&6--- Nearby wards (r=" + radius + ") ---"));
             for (Ward w : nearby) {
                 double dist = Math.sqrt(Math.pow(w.bx() - px, 2) + Math.pow(w.bz() - pz, 2));
-                OfflinePlayer op = Bukkit.getOfflinePlayer(w.owner());
+                OfflinePlayer op = Bukkit.getOfflinePlayer(w.owner()); // UUID overload — safe
                 String ownerName = op.getName() != null ? op.getName() : w.owner().toString().substring(0, 8);
                 String wardLabel = w.name().isEmpty() ? w.shortId() : w.name();
                 p.sendMessage(Msg.c("&7[&f" + wardLabel + "&7] &f" + w.tier()
@@ -348,13 +344,15 @@ public class WardCommand implements CommandExecutor {
                 p.sendMessage(Msg.c("&cThis ward has reached its member limit (" + max + ")."));
                 return true;
             }
-
-            final Ward wardToUpdate = near;
-            final String targetName = args[1];
-
-            OfflinePlayer addOp = Bukkit.getOfflinePlayer(targetName);
-            manager.addMember(wardToUpdate.id(), addOp.getUniqueId());
-            p.sendMessage(Msg.c("&aAdded " + (addOp.getName() != null ? addOp.getName() : targetName) + " to members."));
+            String targetName = args[1];
+            Player onlineTarget = Bukkit.getPlayerExact(targetName);
+            OfflinePlayer addOp = onlineTarget != null ? onlineTarget : Bukkit.getOfflinePlayer(targetName);
+            if (addOp.getUniqueId() == null) {
+                p.sendMessage(Msg.c("&cPlayer not found (must have joined this server): " + targetName));
+                return true;
+            }
+            manager.addMember(near.id(), addOp.getUniqueId());
+            p.sendMessage(Msg.c("&aAdded &f" + (addOp.getName() != null ? addOp.getName() : targetName) + "&a to members."));
             return true;
         }
 
@@ -365,13 +363,15 @@ public class WardCommand implements CommandExecutor {
             if (!near.owner().equals(p.getUniqueId()) && !p.hasPermission("wards.admin")) {
                 p.sendMessage(Msg.c("&cOnly owner or admin.")); return true;
             }
-
-            final Ward wardToUpdate = near;
-            final String targetName = args[1];
-
-            OfflinePlayer removeOp = Bukkit.getOfflinePlayer(targetName);
-            manager.removeMember(wardToUpdate.id(), removeOp.getUniqueId());
-            p.sendMessage(Msg.c("&aRemoved " + (removeOp.getName() != null ? removeOp.getName() : targetName) + " from members."));
+            String targetName = args[1];
+            Player onlineTarget = Bukkit.getPlayerExact(targetName);
+            OfflinePlayer removeOp = onlineTarget != null ? onlineTarget : Bukkit.getOfflinePlayer(targetName);
+            if (removeOp.getUniqueId() == null) {
+                p.sendMessage(Msg.c("&cPlayer not found (must have joined this server): " + targetName));
+                return true;
+            }
+            manager.removeMember(near.id(), removeOp.getUniqueId());
+            p.sendMessage(Msg.c("&aRemoved &f" + (removeOp.getName() != null ? removeOp.getName() : targetName) + "&a from members."));
             return true;
         }
 

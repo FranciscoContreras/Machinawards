@@ -16,6 +16,7 @@ public class MachinaWards extends JavaPlugin {
     private NamespacedKey memberKey;
     private NamespacedKey featureKey;
     private BukkitTask particleTask;
+    private WardParticleTask wardParticleTask;
 
     // Offline member notifications — delivered on next player join (stored as color-coded strings)
     private final java.util.Map<java.util.UUID, java.util.List<String>>
@@ -44,7 +45,8 @@ public class MachinaWards extends JavaPlugin {
         recipes.registerAll();
 
         int intervalTicks = getConfig().getInt("particles.interval_ticks", 40);
-        particleTask = new WardParticleTask(this, manager).runTaskTimer(this, 20L, intervalTicks);
+        wardParticleTask = new WardParticleTask(this, manager);
+        particleTask = wardParticleTask.runTaskTimer(this, 20L, intervalTicks);
 
         getServer().getPluginManager().registerEvents(new ProtectionListener(this, manager), this);
         getServer().getPluginManager().registerEvents(new EntryListener(this, manager), this);
@@ -86,6 +88,10 @@ public class MachinaWards extends JavaPlugin {
         if (particleTask != null) particleTask.cancel();
         if (manager != null) manager.flush();
         getLogger().info("MachinaWards disabled");
+    }
+
+    public void reloadParticleTask() {
+        if (wardParticleTask != null) wardParticleTask.reload();
     }
 
     public WardManager manager() { return manager; }

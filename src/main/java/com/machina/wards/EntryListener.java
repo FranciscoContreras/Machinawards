@@ -2,6 +2,8 @@ package com.machina.wards;
 
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.title.Title;
+import net.kyori.adventure.util.Ticks;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
@@ -12,7 +14,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerMoveEvent;
 
 import java.util.Locale;
-
 import java.util.UUID;
 
 public class EntryListener implements Listener {
@@ -38,7 +39,6 @@ public class EntryListener implements Listener {
         Location to = e.getTo();
         if (to.getWorld() == null) return;
 
-        // O(1) chunk-index lookup instead of iterating all wards in the world
         Ward w = manager.findAt(to);
         if (w == null) return;
         if (w.owner().equals(p.getUniqueId())) return;
@@ -75,31 +75,37 @@ public class EntryListener implements Listener {
                     .replace("%owner%",  ownerName)
                     .replace("%tier%",   w.tier())
                     .replace("%radius%", String.valueOf(w.radius()));
-            ((Audience) p).sendActionBar(Msg.comp(warningRaw));
+            ((Audience) p).sendActionBar(Msg.component(warningRaw));
         }
 
         if (!w.notifyEnabled()) return;
 
         // ── Owner / member alerts ─────────────────────────────────────────────
-        String titleRaw  = plugin.getConfig().getString("alerts.title_format", "&6Ward alert");
-        String actionRaw = plugin.getConfig().getString("alerts.actionbar_format",
+        String titleStr  = plugin.getConfig().getString("alerts.title_format", "&6Ward alert");
+        String actionFmt = plugin.getConfig().getString("alerts.actionbar_format",
                 "&e%player% entered &f%ward%")
                 .replace("%player%", p.getName())
                 .replace("%ward%",   wardDisplay)
                 .replace("%owner%",  ownerName);
 
+        Title adventureTitle = Title.title(
+            Msg.component(titleStr),
+            Component.empty(),
+            Title.Times.times(Ticks.duration(5), Ticks.duration(30), Ticks.duration(10))
+        );
+
         Player owner = Bukkit.getPlayer(w.owner());
         if (owner != null && owner.isOnline()) {
-            owner.sendTitle(Msg.c(titleRaw), "", 5, 30, 10);
-            ((Audience) owner).sendActionBar(Msg.comp(actionRaw));
-            owner.sendMessage(Msg.c(actionRaw));
+            ((Audience) owner).showTitle(adventureTitle);
+            ((Audience) owner).sendActionBar(Msg.component(actionFmt));
+            owner.sendMessage(Msg.c(actionFmt));
         }
         for (UUID u : w.members()) {
             Player m = Bukkit.getPlayer(u);
             if (m != null && m.isOnline()) {
-                m.sendTitle(Msg.c(titleRaw), "", 5, 30, 10);
-                ((Audience) m).sendActionBar(Msg.comp(actionRaw));
-                m.sendMessage(Msg.c(actionRaw));
+                ((Audience) m).showTitle(adventureTitle);
+                ((Audience) m).sendActionBar(Msg.component(actionFmt));
+                m.sendMessage(Msg.c(actionFmt));
             }
         }
     }

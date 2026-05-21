@@ -11,9 +11,13 @@ import org.bukkit.event.block.*;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.EntityPlaceEvent;
 import org.bukkit.event.hanging.HangingBreakByEntityEvent;
+import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
+import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.block.Action;
+import org.bukkit.event.vehicle.VehicleDamageEvent;
+import org.bukkit.event.vehicle.VehicleDestroyEvent;
 
 // Purpur-specific events are handled in PurpurProtectionListener (registered conditionally)
 
@@ -29,7 +33,20 @@ public class ProtectionListener implements Listener {
         this.manager = manager;
     }
 
-    private boolean blocked(Player p, Block b) {
+    /** Returns true if the player is blocked from BUILD actions (place/break/bucket/entity place) in this ward. */
+    private boolean blockedForBuild(Player p, Block b) {
+        if (b == null) return false;
+        Ward w = manager.findAt(b.getLocation());
+        if (w == null) return false;
+        if (p.hasPermission("wards.admin")) return false;
+        UUID pid = p.getUniqueId();
+        if (!pid.equals(w.owner()) && !w.members().contains(pid)) return true; // non-member
+        if (!plugin.getConfig().getBoolean("trust_levels.enabled", true)) return false;
+        return w.getMemberTrust(pid) == TrustLevel.VISITOR;
+    }
+
+    /** Returns true if the player is blocked from INTERACT actions (non-members only; VISITOR can interact). */
+    private boolean blockedForInteract(Player p, Block b) {
         if (b == null) return false;
         Ward w = manager.findAt(b.getLocation());
         if (w == null) return false;
@@ -38,23 +55,35 @@ public class ProtectionListener implements Listener {
         return !pid.equals(w.owner()) && !w.members().contains(pid);
     }
 
+    /** Location-based build check for entity events that don't have a block. */
+    private boolean blockedForBuildAt(Player p, org.bukkit.Location loc) {
+        if (loc == null) return false;
+        Ward w = manager.findAt(loc);
+        if (w == null) return false;
+        if (p.hasPermission("wards.admin")) return false;
+        UUID pid = p.getUniqueId();
+        if (!pid.equals(w.owner()) && !w.members().contains(pid)) return true;
+        if (!plugin.getConfig().getBoolean("trust_levels.enabled", true)) return false;
+        return w.getMemberTrust(pid) == TrustLevel.VISITOR;
+    }
+
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent e) {
         if (!plugin.getConfig().getBoolean("protection.block_place", true)) return;
-        if (blocked(e.getPlayer(), e.getBlockPlaced())) e.setCancelled(true);
+        if (blockedForBuild(e.getPlayer(), e.getBlockPlaced())) e.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent e) {
         if (!plugin.getConfig().getBoolean("protection.block_break", true)) return;
-        if (blocked(e.getPlayer(), e.getBlock())) e.setCancelled(true);
+        if (blockedForBuild(e.getPlayer(), e.getBlock())) e.setCancelled(true);
     }
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onInteract(PlayerInteractEvent e) {
         if (!plugin.getConfig().getBoolean("protection.interact", true)) return;
         if (e.getClickedBlock() == null) return;
-        if (blocked(e.getPlayer(), e.getClickedBlock())) e.setCancelled(true);
+        if (blockedForInteract(e.getPlayer(), e.getClickedBlock())) e.setCancelled(true);
     }
 
     // ── Explosions ────────────────────────────────────────────────────────────
@@ -63,7 +92,6 @@ public class ProtectionListener implements Listener {
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onEntityExplosion(EntityExplodeEvent e) {
         if (!plugin.getConfig().getBoolean("protection.explosion", true)) return;
-        // Protect individual blocks inside wards if the explosion source was outside
         e.blockList().removeIf(b -> manager.findAt(b.getLocation()) != null);
     }
 
@@ -83,13 +111,12 @@ public class ProtectionListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onEntityDamage(EntityDamageByEntityEvent e) {
-        // Resolve the actual attacker using Java 21 Pattern Matching
         Player attacker = switch (e.getDamager()) {
             case Player pa -> pa;
             case Projectile proj when proj.getShooter() instanceof Player pa -> pa;
             default -> null;
         };
-        if (attacker == null) return; // non-player source; entity_grief covers mobs
+        if (attacker == null) return;
 
         Ward w = manager.findAt(e.getEntity().getLocation());
         if (w == null) return;
@@ -99,12 +126,10 @@ public class ProtectionListener implements Listener {
         boolean canAct = aid.equals(w.owner()) || w.members().contains(aid);
 
         if (e.getEntity() instanceof Player) {
-            // PVP: block outsiders attacking players inside the ward
             if (!plugin.getConfig().getBoolean("protection.pvp", true)) return;
             if (w.hasFlag(WardFlag.ALLOW_PVP)) return;
             if (!canAct) e.setCancelled(true);
         } else {
-            // Entity damage: block outsiders from killing animals / mobs inside the ward
             if (!plugin.getConfig().getBoolean("protection.entity_damage", true)) return;
             if (w.hasFlag(WardFlag.ALLOW_MOB_DAMAGE)) return;
             if (!canAct) e.setCancelled(true);
@@ -116,10 +141,56 @@ public class ProtectionListener implements Listener {
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onCropTrample(PlayerInteractEvent e) {
         if (!plugin.getConfig().getBoolean("protection.crop_trample", true)) return;
-        if (e.getAction() != Action.PHYSICAL) return;
+        if (e.getAction() != org.bukkit.event.block.Action.PHYSICAL) return;
         Block b = e.getClickedBlock();
         if (b == null || b.getType() != Material.FARMLAND) return;
-        if (blocked(e.getPlayer(), b)) e.setCancelled(true);
+        if (blockedForBuild(e.getPlayer(), b)) e.setCancelled(true);
+    }
+
+    // ── New protection handlers (v2.0) ────────────────────────────────────────
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onBucketEmpty(PlayerBucketEmptyEvent e) {
+        if (!plugin.getConfig().getBoolean("protection.bucket_pour", true)) return;
+        if (blockedForBuild(e.getPlayer(), e.getBlock())) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onEntityPlace(EntityPlaceEvent e) {
+        if (!plugin.getConfig().getBoolean("protection.entity_place", true)) return;
+        Player p = e.getPlayer();
+        if (p == null) return;
+        if (blockedForBuildAt(p, e.getBlock().getLocation())) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onArmorStandManipulate(PlayerArmorStandManipulateEvent e) {
+        if (!plugin.getConfig().getBoolean("protection.entity_place", true)) return;
+        if (blockedForBuildAt(e.getPlayer(), e.getRightClicked().getLocation())) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onVehicleDamage(VehicleDamageEvent e) {
+        if (!plugin.getConfig().getBoolean("protection.vehicle_destroy", true)) return;
+        if (!(e.getAttacker() instanceof Player p)) return;
+        if (blockedForBuildAt(p, e.getVehicle().getLocation())) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onVehicleDestroy(VehicleDestroyEvent e) {
+        if (!plugin.getConfig().getBoolean("protection.vehicle_destroy", true)) return;
+        if (!(e.getAttacker() instanceof Player p)) return;
+        if (blockedForBuildAt(p, e.getVehicle().getLocation())) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onBlockSpread(BlockSpreadEvent e) {
+        if (!plugin.getConfig().getBoolean("protection.block_spread", true)) return;
+        // Cancel only when spread destination is inside a ward but source is outside
+        if (manager.findAt(e.getBlock().getLocation()) != null
+                && manager.findAt(e.getSource().getLocation()) == null) {
+            e.setCancelled(true);
+        }
     }
 
     // ── Pistons ───────────────────────────────────────────────────────────────
@@ -128,14 +199,12 @@ public class ProtectionListener implements Listener {
     public void onPistonExtend(BlockPistonExtendEvent e) {
         if (!plugin.getConfig().getBoolean("protection.piston", true)) return;
         for (Block b : e.getBlocks()) {
-            // Cancel if source block or push destination is inside a ward
             if (manager.findAt(b.getLocation()) != null ||
                 manager.findAt(b.getRelative(e.getDirection()).getLocation()) != null) {
                 e.setCancelled(true);
                 return;
             }
         }
-        // Also block the piston head itself entering a ward
         if (manager.findAt(e.getBlock().getRelative(e.getDirection()).getLocation()) != null) {
             e.setCancelled(true);
         }
@@ -154,12 +223,12 @@ public class ProtectionListener implements Listener {
         }
     }
 
-    // ── Entity griefing (enderman, silverfish, wither, ravager, etc.) ─────────
+    // ── Entity griefing ───────────────────────────────────────────────────────
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onEntityChangeBlock(EntityChangeBlockEvent e) {
         if (!plugin.getConfig().getBoolean("protection.entity_grief", true)) return;
-        if (e.getEntity() instanceof Player) return; // handled by onPlace/onBreak
+        if (e.getEntity() instanceof Player) return;
         if (manager.findAt(e.getBlock().getLocation()) != null) e.setCancelled(true);
     }
 
@@ -171,7 +240,7 @@ public class ProtectionListener implements Listener {
         if (manager.findAt(e.getToBlock().getLocation()) != null) e.setCancelled(true);
     }
 
-    // ── Hanging entities (item frames, paintings, armor stands) ──────────────
+    // ── Hanging entities ──────────────────────────────────────────────────────
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onHangingBreak(HangingBreakByEntityEvent e) {
@@ -179,7 +248,6 @@ public class ProtectionListener implements Listener {
         Ward w = manager.findAt(e.getEntity().getLocation());
         if (w == null) return;
 
-        // Allow owner and members; cancel everything else (projectiles, other mobs, etc.)
         if (e.getRemover() instanceof Player p) {
             if (p.hasPermission("wards.admin")) return;
             if (p.getUniqueId().equals(w.owner()) || w.members().contains(p.getUniqueId())) return;

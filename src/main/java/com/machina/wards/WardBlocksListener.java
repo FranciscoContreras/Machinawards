@@ -2,6 +2,8 @@ package com.machina.wards;
 
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.title.Title;
+import net.kyori.adventure.util.Ticks;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
@@ -90,7 +92,11 @@ public class WardBlocksListener implements Listener {
 
         playSound(p, "ward_place");
         p.sendMessage(Msg.c("&aWard placed. Tier: &f" + tier + " &7radius &f" + radius));
-        p.sendTitle(Msg.c("&6Ward placed"), "", 5, 30, 10);
+        ((Audience) p).showTitle(Title.title(
+            Msg.component("&6Ward placed"),
+            Component.empty(),
+            Title.Times.times(Ticks.duration(5), Ticks.duration(30), Ticks.duration(10))
+        ));
     }
 
     @EventHandler(ignoreCancelled = true)

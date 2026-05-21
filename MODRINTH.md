@@ -1,5 +1,23 @@
 # MachinaWards
 
+## Changelog
+
+### v2.0.0
+- **Trust Levels** — Ward members can now be set as **Visitor** (interact only: chests, buttons, doors) or **Member** (full build access). Manage via the new Member Management screen (right-click ward → Manage Members → click a player skull). Existing members retain full access automatically.
+- **New Member Management GUI** — 54-slot paginated screen with green (Member) and yellow (Visitor) player skulls. Click a skull to open the 27-slot per-member sub-menu with trust toggle and Shift+Click removal.
+- **6 New Protection Handlers** — Non-members can no longer pour lava/water buckets into wards, place armor stands/boats/minecarts, manipulate items on armor stands, damage or destroy vehicles, or spread fire/sculk/vines into protected areas.
+- **Purpur-enhanced explosion protection** — On Purpur servers, explosions near wards are cancelled before block damage is calculated (`PreEntityExplodeEvent` / `PreBlockExplodeEvent`), significantly reducing CPU cost. Non-members cannot change spawner types inside wards.
+- **Member notifications** — Players receive a message when added or removed as a ward member (online immediately, offline on next join).
+- **1-block ward buffer** — Wards now require a 1-block gap between each other, preventing adjacent-border griefing.
+- **EventPriority.LOWEST** — All protection events now fire before other plugins process them.
+- **Adventure API** — Migrated all messages, action bars, and titles from deprecated BungeeCord/Spigot APIs to Adventure API. All existing `&` and `&#RRGGBB` color codes continue to work.
+- **MySQL connection resilience** — Auto-reconnects after network drops without requiring a server restart.
+- **Architecture fixes** — Fixed a plugin-reload memory leak (static pending maps → instance fields); particle effect settings are now cached and no longer read on every server tick.
+
+---
+
+
+
 **Protect your builds with configurable land claim wards — no grief, no drama.**
 
 MachinaWards lets players place physical ward blocks to claim and protect an area. Members can be added by the owner, events are logged, and outsiders are stopped cold. Three tiers of wards scale from starter bases to high-value infrastructure.
