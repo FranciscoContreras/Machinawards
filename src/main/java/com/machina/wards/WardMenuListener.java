@@ -57,20 +57,26 @@ public class WardMenuListener implements Listener {
     // ── Main menu ────────────────────────────────────────────────────────────
 
     public static void openMain(MachinaWards plugin, Player p, Ward w) {
+        boolean manage = w.owner().equals(p.getUniqueId()) || p.hasPermission("wards.admin");
         Inventory inv = Bukkit.createInventory(p, 27, Msg.c("&3" + TITLE_MAIN));
-        String nameLabel = w.name().isEmpty() ? "&6Rename" : "&6Rename &7(" + w.name() + ")";
-        inv.setItem(10, item(plugin, w, Material.NAME_TAG,    nameLabel,               "rename"));
-        inv.setItem(11, item(plugin, w, Material.BELL,        "&eToggle alerts",        "toggle_alerts"));
-        inv.setItem(12, item(plugin, w, Material.PLAYER_HEAD, "&bManage Members",       "members"));
-        inv.setItem(13, item(plugin, w, Material.PAPER,       "&aHistory",              "history"));
-        inv.setItem(14, item(plugin, w, Material.SPYGLASS,    "&dShow Radius",          "show_radius"));
-        inv.setItem(15, item(plugin, w, Material.EMERALD,     "&aAdd member",           "add_member"));
-        String msgLabel = w.entryMessage().isEmpty() ? "&6Entry Message" : "&6Entry Message &7(set)";
-        inv.setItem(19, item(plugin, w, Material.FEATHER, msgLabel, "set_entry_message"));
-        inv.setItem(20, flagItem(plugin, w, WardFlag.ALLOW_PVP));
-        inv.setItem(21, flagItem(plugin, w, WardFlag.ALLOW_MOB_DAMAGE));
-        if (plugin.getConfig().isList("wards." + w.tier() + ".features")) {
-            inv.setItem(22, item(plugin, w, Material.NETHER_STAR, "&5✦ Ward Intelligence", "features"));
+        if (manage) {
+            String nameLabel = w.name().isEmpty() ? "&6Rename" : "&6Rename &7(" + w.name() + ")";
+            inv.setItem(10, item(plugin, w, Material.NAME_TAG,    nameLabel,               "rename"));
+            inv.setItem(11, item(plugin, w, Material.BELL,        "&eToggle alerts",        "toggle_alerts"));
+            inv.setItem(12, item(plugin, w, Material.PLAYER_HEAD, "&bManage Members",       "members"));
+            inv.setItem(13, item(plugin, w, Material.PAPER,       "&aHistory",              "history"));
+            inv.setItem(14, item(plugin, w, Material.SPYGLASS,    "&dShow Radius",          "show_radius"));
+            inv.setItem(15, item(plugin, w, Material.EMERALD,     "&aAdd member",           "add_member"));
+            String msgLabel = w.entryMessage().isEmpty() ? "&6Entry Message" : "&6Entry Message &7(set)";
+            inv.setItem(19, item(plugin, w, Material.FEATHER, msgLabel, "set_entry_message"));
+            inv.setItem(20, flagItem(plugin, w, WardFlag.ALLOW_PVP));
+            inv.setItem(21, flagItem(plugin, w, WardFlag.ALLOW_MOB_DAMAGE));
+            if (plugin.getConfig().isList("wards." + w.tier() + ".features")) {
+                inv.setItem(22, item(plugin, w, Material.NETHER_STAR, "&5✦ Ward Intelligence", "features"));
+            }
+        } else {
+            inv.setItem(12, item(plugin, w, Material.PAPER,    "&aHistory",     "history"));
+            inv.setItem(14, item(plugin, w, Material.SPYGLASS, "&dShow Radius", "show_radius"));
         }
         p.openInventory(inv);
     }
@@ -375,6 +381,12 @@ public class WardMenuListener implements Listener {
         Ward w = manager.get(UUID.fromString(wardId));
         if (w == null) { p.closeInventory(); return; }
 
+        boolean viewOnly = action.equals("history") || action.equals("show_radius");
+        if (!viewOnly && !w.owner().equals(p.getUniqueId()) && !p.hasPermission("wards.admin")) {
+            p.sendMessage(Msg.c("&cOnly the ward owner can do that."));
+            return;
+        }
+
         switch (action) {
             case "toggle_alerts" -> {
                 w.setNotify(!w.notifyEnabled());
@@ -465,6 +477,9 @@ public class WardMenuListener implements Listener {
             return;
         }
         if ("add_member".equals(action)) {
+            if (!w.owner().equals(p.getUniqueId()) && !p.hasPermission("wards.admin")) {
+                p.sendMessage(Msg.c("&cOnly the ward owner can add members.")); return;
+            }
             int max = manager.maxMembers(w);
             if (max >= 0 && w.members().size() >= max) {
                 p.sendMessage(Msg.c("&cThis ward has reached its member limit (" + max + ")."));
@@ -510,6 +525,9 @@ public class WardMenuListener implements Listener {
         if (w == null) { p.closeInventory(); return; }
 
         if (action.startsWith("set_trust:") && memberStr != null) {
+            if (!w.owner().equals(p.getUniqueId()) && !p.hasPermission("wards.admin")) {
+                p.sendMessage(Msg.c("&cOnly the ward owner can change trust levels.")); return;
+            }
             String trustId = action.substring("set_trust:".length());
             TrustLevel newLevel = TrustLevel.fromId(trustId);
             UUID memberId = UUID.fromString(memberStr);
@@ -519,6 +537,9 @@ public class WardMenuListener implements Listener {
             return;
         }
         if ("remove_member".equals(action) && memberStr != null) {
+            if (!w.owner().equals(p.getUniqueId()) && !p.hasPermission("wards.admin")) {
+                p.sendMessage(Msg.c("&cOnly the ward owner can remove members.")); return;
+            }
             if (!e.isShiftClick()) {
                 p.sendMessage(Msg.c("&eShift+Click to confirm removal."));
                 return;
@@ -653,5 +674,14 @@ public class WardMenuListener implements Listener {
             manager.addMember(wardId, memberUuid);
             player.sendMessage(Msg.c("&aAdded &f" + memberName + "&a as member."));
         });
+    }
+
+    @EventHandler
+    public void onQuit(org.bukkit.event.player.PlayerQuitEvent e) {
+        UUID uid = e.getPlayer().getUniqueId();
+        pendingAdd.remove(uid);
+        pendingRename.remove(uid);
+        pendingMessage.remove(uid);
+        memberPage.remove(uid);
     }
 }

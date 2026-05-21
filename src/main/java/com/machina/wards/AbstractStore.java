@@ -172,6 +172,8 @@ public abstract class AbstractStore implements DataStore {
                     String name  = rs.getString("name");
                     Ward ward    = new Ward(id, owner, world, x, y, z, radius, tier, notify, created);
                     ward.setName(name != null ? name : "");
+                    String entryMsg = rs.getString("entry_message");
+                    ward.setEntryMessage(entryMsg != null ? entryMsg : "");
                     list.add(ward);
                 }
             }
@@ -286,7 +288,7 @@ public abstract class AbstractStore implements DataStore {
                 ps.setInt(9, w.notifyEnabled() ? 1 : 0);
                 ps.setLong(10, w.createdAt());
                 ps.setString(11, w.name());
-                ps.setString(12, ""); // entry_message placeholder
+                ps.setString(12, w.entryMessage());
                 ps.executeUpdate();
             }
         });

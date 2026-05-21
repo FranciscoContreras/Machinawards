@@ -83,7 +83,8 @@ public class ShopMenuListener implements Listener {
         if (!econ.has(p, price)) { p.sendMessage(Msg.c("&cYou need " + price + " to buy this.")); return; }
 
         econ.withdrawPlayer(p, price);
-        p.getInventory().addItem(it.clone());
+        var overflow = p.getInventory().addItem(it.clone());
+        overflow.values().forEach(stack -> p.getWorld().dropItemNaturally(p.getLocation(), stack));
         p.sendMessage(Msg.c("&aPurchased " +
                 plugin.getConfig().getString("wards." + tier + ".display_name", "&aWard") + "&a."));
     }

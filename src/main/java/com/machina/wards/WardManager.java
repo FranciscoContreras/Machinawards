@@ -131,7 +131,7 @@ public class WardManager {
     }
 
     private void notifyMemberRemoved(Ward w, UUID memberId) {
-        if (!plugin.getConfig().getBoolean("members.notify_on_add", true)) return;
+        if (!plugin.getConfig().getBoolean("members.notify_on_remove", true)) return;
         String wardLabel = w.name().isEmpty() ? w.shortId() : w.name();
         String msg = "&c[Ward: &f" + wardLabel + "&c] You were removed as a member.";
         org.bukkit.entity.Player target = org.bukkit.Bukkit.getPlayer(memberId);

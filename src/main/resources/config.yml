@@ -55,7 +55,8 @@ trust_levels:
   enabled: true       # if false, VISITOR members behave identically to MEMBER (full access)
 
 members:
-  notify_on_add: true # notify players when they are added or removed as ward members
+  notify_on_add: true    # notify players when they are added as ward members
+  notify_on_remove: true # notify players when they are removed as ward members
 
 sounds:
   ward_place: BLOCK_BEACON_ACTIVATE

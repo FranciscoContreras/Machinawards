@@ -115,10 +115,18 @@ public class WardBlocksListener implements Listener {
             return;
         }
         manager.delete(w.id());
+        e.setDropItems(false);
         loc.getWorld().spawnParticle(Particle.END_ROD,
                 loc.clone().add(0.5, 0.5, 0.5), 25, 0.5, 0.5, 0.5, 0.05);
+
+        ItemStack wardItem = createWardItemFor(w);
+        var leftover = p.getInventory().addItem(wardItem);
+        if (!leftover.isEmpty()) {
+            leftover.values().forEach(stack ->
+                loc.getWorld().dropItemNaturally(loc.clone().add(0.5, 1, 0.5), stack));
+        }
         playSound(p, "ward_break");
-        p.sendMessage(Msg.c("&eWard removed."));
+        p.sendMessage(Msg.c("&eWard removed. Ward item returned to your inventory."));
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -160,14 +168,17 @@ public class WardBlocksListener implements Listener {
         }
     }
 
-    private void pickUpWard(Player p, Ward w, Location loc) {
+    private ItemStack createWardItemFor(Ward w) {
         ConfigurationSection tierSec = plugin.getConfig().getConfigurationSection("wards." + w.tier());
         String matName = tierSec != null ? tierSec.getString("result_material", "LANTERN") : "LANTERN";
         org.bukkit.Material mat = org.bukkit.Material.matchMaterial(matName);
         if (mat == null) mat = org.bukkit.Material.LANTERN;
         String display = tierSec != null ? tierSec.getString("display_name", w.tier()) : w.tier();
+        return new RecipeLoader(plugin, tierKey, manager).createWardItem(w.tier(), mat, display);
+    }
 
-        ItemStack wardItem = new RecipeLoader(plugin, tierKey, manager).createWardItem(w.tier(), mat, display);
+    private void pickUpWard(Player p, Ward w, Location loc) {
+        ItemStack wardItem = createWardItemFor(w);
 
         manager.delete(w.id());
         loc.getBlock().setType(org.bukkit.Material.AIR);
@@ -176,7 +187,8 @@ public class WardBlocksListener implements Listener {
 
         var leftover = p.getInventory().addItem(wardItem);
         if (!leftover.isEmpty()) {
-            loc.getWorld().dropItemNaturally(loc.clone().add(0.5, 1, 0.5), wardItem);
+            leftover.values().forEach(stack ->
+                loc.getWorld().dropItemNaturally(loc.clone().add(0.5, 1, 0.5), stack));
         }
         playSound(p, "ward_pickup");
         p.sendMessage(Msg.c("&aWard picked up. Place it again to re-activate."));
