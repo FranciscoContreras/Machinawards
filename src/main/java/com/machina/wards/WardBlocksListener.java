@@ -7,7 +7,6 @@ import net.kyori.adventure.util.Ticks;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
-import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
@@ -195,11 +194,7 @@ public class WardBlocksListener implements Listener {
     }
 
     private void playSound(Player p, String key) {
-        String name = plugin.getConfig().getString("sounds." + key, "");
-        if (name.isEmpty()) return;
-        try {
-            Sound s = Sound.valueOf(name.toUpperCase(Locale.ROOT));
-            p.playSound(p.getLocation(), s, 1f, 1f);
-        } catch (IllegalArgumentException ignored) {}
+        var s = Msg.resolveSound(plugin.getConfig().getString("sounds." + key, ""));
+        if (s != null) p.playSound(p.getLocation(), s, 1f, 1f);
     }
 }

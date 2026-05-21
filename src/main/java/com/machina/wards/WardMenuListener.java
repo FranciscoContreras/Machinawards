@@ -653,9 +653,7 @@ public class WardMenuListener implements Listener {
         if (addWid == null) return;
 
         e.setCancelled(true);
-        // Try online player first; fall back to getOfflinePlayer (fast on Paper/Purpur — reads local cache)
-        Player onlineOp = Bukkit.getPlayerExact(messageText);
-        OfflinePlayer op = onlineOp != null ? onlineOp : Bukkit.getOfflinePlayer(messageText);
+        OfflinePlayer op = Msg.resolveOfflinePlayer(messageText);
         if (op.getUniqueId() == null) {
             player.sendMessage(Msg.c("&cPlayer not found (must have joined this server): " + messageText));
             return;

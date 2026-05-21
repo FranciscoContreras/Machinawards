@@ -1,7 +1,7 @@
 name: MachinaWards
 main: com.machina.wards.MachinaWards
 version: 2.0.0
-api-version: 1.21
+api-version: '26.1'
 author: Machina
 softdepend: [Vault]
 libraries:

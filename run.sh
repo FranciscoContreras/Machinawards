@@ -3,7 +3,7 @@ set -e
 
 # Paths (relative to project root)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SPIGOT_JAR="$SCRIPT_DIR/spigot-api-1.21.8-R0.1-SNAPSHOT-shaded.jar"
+SPIGOT_JAR="$SCRIPT_DIR/spigot-api-26.1.2-R0.1-SNAPSHOT-shaded.jar"
 VAULT_JAR="$SCRIPT_DIR/test-server/plugins/Vault.jar"
 SRC_DIR=src/main/java
 RES_DIR=src/main/resources

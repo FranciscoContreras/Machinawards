@@ -157,10 +157,8 @@ public class WardCommand implements CommandExecutor {
             final Ward wardToTransfer = w;
             final String senderName = p.getName();
 
-            // Try online player first, fall back to offline (cached on Paper/Purpur)
-            Player onlineTarget = Bukkit.getPlayerExact(targetName);
-            OfflinePlayer newOwnerOp = onlineTarget != null ? onlineTarget : Bukkit.getOfflinePlayer(targetName);
-            if (newOwnerOp.getUniqueId() == null && onlineTarget == null) {
+            OfflinePlayer newOwnerOp = Msg.resolveOfflinePlayer(targetName);
+            if (newOwnerOp.getUniqueId() == null) {
                 p.sendMessage(Msg.c("&cPlayer not found (must have joined this server): " + targetName));
                 return true;
             }
@@ -345,8 +343,7 @@ public class WardCommand implements CommandExecutor {
                 return true;
             }
             String targetName = args[1];
-            Player onlineTarget = Bukkit.getPlayerExact(targetName);
-            OfflinePlayer addOp = onlineTarget != null ? onlineTarget : Bukkit.getOfflinePlayer(targetName);
+            OfflinePlayer addOp = Msg.resolveOfflinePlayer(targetName);
             if (addOp.getUniqueId() == null) {
                 p.sendMessage(Msg.c("&cPlayer not found (must have joined this server): " + targetName));
                 return true;
@@ -364,8 +361,7 @@ public class WardCommand implements CommandExecutor {
                 p.sendMessage(Msg.c("&cOnly owner or admin.")); return true;
             }
             String targetName = args[1];
-            Player onlineTarget = Bukkit.getPlayerExact(targetName);
-            OfflinePlayer removeOp = onlineTarget != null ? onlineTarget : Bukkit.getOfflinePlayer(targetName);
+            OfflinePlayer removeOp = Msg.resolveOfflinePlayer(targetName);
             if (removeOp.getUniqueId() == null) {
                 p.sendMessage(Msg.c("&cPlayer not found (must have joined this server): " + targetName));
                 return true;

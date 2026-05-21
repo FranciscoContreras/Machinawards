@@ -7,13 +7,11 @@ import net.kyori.adventure.util.Ticks;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
-import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerMoveEvent;
 
-import java.util.Locale;
 import java.util.UUID;
 
 public class EntryListener implements Listener {
@@ -52,13 +50,8 @@ public class EntryListener implements Listener {
         manager.setLastAlert(w.id(), p.getUniqueId(), now);
         manager.logEntry(w.id(), p.getUniqueId(), p.getName());
 
-        String entrySnd = plugin.getConfig().getString("sounds.entry_alert", "");
-        if (!entrySnd.isEmpty()) {
-            try {
-                Sound snd = Sound.valueOf(entrySnd.toUpperCase(Locale.ROOT));
-                p.playSound(p.getLocation(), snd, 0.5f, 1.2f);
-            } catch (IllegalArgumentException ignored) {}
-        }
+        var entrySnd = Msg.resolveSound(plugin.getConfig().getString("sounds.entry_alert", ""));
+        if (entrySnd != null) p.playSound(p.getLocation(), entrySnd, 0.5f, 1.2f);
 
         String wardDisplay = w.name().isEmpty() ? ("Ward #" + w.shortId()) : w.name();
         OfflinePlayer ownerOp = Bukkit.getOfflinePlayer(w.owner());

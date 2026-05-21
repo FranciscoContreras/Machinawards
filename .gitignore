@@ -20,5 +20,5 @@ test-server/server.properties
 
 # Dependencies
 apache-maven-3.9.6/
-spigot-api-*.jar
+spigot-api-1.21*.jar
 libs/
