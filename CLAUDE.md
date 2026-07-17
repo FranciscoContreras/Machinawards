@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Test/Production Server (VPS)
 
-**Host:** `server.wearemachina.com` — Ubuntu 24.04, AMD EPYC 9645, 8GB RAM
-**Minecraft:** Purpur, running at `/root/server/`
-**Management:** `systemctl start|stop|status minecraft` — uses `screen` + auto-restart script
-**Console access:** `screen -r minecraft` (detach with Ctrl+A D)
-**Plugins already installed:** ViaVersion, ViaBackwards, Chunky, spark
+**Host:** `server.wearemachina.com` — Ubuntu 24.04, AMD EPYC 9645
+**SSH:** `ssh -i ~/.ssh/briccs_ed25519 root@server.wearemachina.com` (the `~/.ssh/config` entry for this host points at a stale `google_compute_engine` key — pass `-i` explicitly)
+**Minecraft:** Purpur 26.1.2 (Java 25) in the Docker container `sundaymarket-mc` (`itzg/minecraft-server:java25`); data volume at host path `/opt/sundaymarket/data` (→ `/data` in-container). A companion `sundaymarket-mc-backup` container handles backups. This is the live "Sunday Market" community server (~50 plugins incl. Vault, EssentialsX, LuckPerms, WorldGuard, Geyser).
+**Console access:** `docker exec sundaymarket-mc rcon-cli '<command>'`
+**Logs:** `docker logs sundaymarket-mc --since 5m`
 
-To deploy MachinaWards to the live server: copy the built `MachinaWards.jar` to `/root/server/plugins/` then reload via console (`plugman reload MachinaWards`) or restart the service.
+To deploy MachinaWards: copy the built `MachinaWards.jar` to `/opt/sundaymarket/data/plugins/MachinaWards.jar` (chown `briccs:briccs`), then `docker restart sundaymarket-mc` — no PlugMan installed. Check `rcon-cli list` for online players first; the container's stop grace period is 60s, after which the server process is killed.
 
 ## Build & Run
 
