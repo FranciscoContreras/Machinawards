@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Test/Production Server (VPS)
 
 **Host:** `server.wearemachina.com` — Ubuntu 24.04, AMD EPYC 9645, 8GB RAM
-**Minecraft:** Purpur 1.21.11 build 2565, running at `/root/server/`
+**Minecraft:** Purpur, running at `/root/server/`
 **Management:** `systemctl start|stop|status minecraft` — uses `screen` + auto-restart script
 **Console access:** `screen -r minecraft` (detach with Ctrl+A D)
 **Plugins already installed:** ViaVersion, ViaBackwards, Chunky, spark
@@ -20,69 +20,107 @@ To deploy MachinaWards to the live server: copy the built `MachinaWards.jar` to 
 ./run.sh
 ```
 
-Compiles all Java sources from `src/main/java`, packages `MachinaWards.jar`, deploys it to `test-server/plugins/`. Dependencies (`spigot-api-1.21.8-R0.1-SNAPSHOT-shaded.jar`, `test-server/plugins/Vault.jar`) are resolved relative to the project root. Target: Java 21.
+Compiles all Java sources from `src/main/java` (`javac --release 21`), packages `MachinaWards.jar`, deploys it to `test-server/plugins/`. Classpath: `spigot-api-1.21.8-R0.1-SNAPSHOT-shaded.jar` (project root), `test-server/plugins/Vault.jar`, and every jar in `libs/` (Adventure API 4.17 jars — **gitignored, must exist locally to build**).
 
-**Testing:** No unit test framework. Test manually via the bundled local server. Delete `test-server/plugins/MachinaWards/wards.db` to reset ward data.
+**Compatibility floor rule:** the build deliberately compiles against the *oldest* supported API (1.21.8) with `api-version: '1.21'` — that's what lets one jar run on Paper/Purpur from 1.21 through 26.x (`api-version` is a minimum; newer servers stay backward compatible). Do not bump the compile jar to a newer API unless dropping older servers is intended. A `spigot-api-26.1.2` jar also sits at the root for reference. Plain Spigot is NOT supported by v2.x (no bundled Adventure — fails on enable with `NoClassDefFoundError`); Spigot users need v1.9.1.
+
+MySQL driver and HikariCP are *not* on the compile classpath — they're runtime-downloaded via `plugin.yml` `libraries:` (mysql-connector-j 8.3.0, HikariCP 6.2.1 — the latter is declared but currently unused in code).
+
+**Testing:** No unit test framework. `TEST_PLAN.md` is the manual in-game test matrix (the de facto test suite). To reset ward data, delete `test-server/plugins/MachinaWards/MachinaWards.db` (plus `-shm`/`-wal` WAL siblings). An orphaned `wards.db` in that folder is from pre-v2.0 and unused.
 
 ## Local Dev Auto-Reload
 
 Two terminals:
 
 ```bash
-# Terminal 1 — start local server (offline mode, RCON enabled on :25575)
-./start-local.sh
+# Terminal 1 — start local server
+./start-local.sh    # hardcoded JDK 24 path, runs test-server/spigot-1.21.8.jar
 
-# Terminal 2 — watch for .java changes, rebuild, and hot-reload
-./dev-watch.sh
+# Terminal 2 — watch .java changes, rebuild (~2s), hot-reload via RCON
+./dev-watch.sh      # requires fswatch (brew install fswatch); sends `reload confirm`
 ```
 
-On every `.java` save: rebuilds the JAR (~2s), then sends `reload confirm` via RCON. The server reloads all plugins without a full restart.
+RCON password for local dev: `devlocal` (manual use: `python3 rcon.py devlocal <command>`, hardcoded to 127.0.0.1:25575).
 
-RCON password for local dev: `devlocal` (see `rcon.py` for manual use: `python3 rcon.py devlocal <command>`).
+`test-server/server.properties` is gitignored and regenerates — the dev loop needs `enable-rcon=true`, `rcon.password=devlocal`, `online-mode=false` restored if it resets. Note the local server jar (1.21.8) is older than the compile target (26.1.2).
 
 ## Architecture
 
-**Type:** Minecraft Spigot plugin (`api-version: 1.21`, `main: com.machina.wards.MachinaWards`)
+**Type:** Minecraft Spigot-API plugin (`api-version: '1.21'`, `main: com.machina.wards.MachinaWards`, softdepend Vault), runs on Paper/Purpur 1.21–26.x. All ~23 classes live in a single package: `com.machina.wards`.
 
-All source lives in a single package: `com.machina.wards`
+### Components
 
-### Core Components
+| Area | Classes | Role |
+|---|---|---|
+| Core | `MachinaWards`, `Ward`, `WardManager` | Lifecycle/wiring; data model; central business logic + in-memory indexes |
+| Storage | `DataStore` (interface), `AbstractStore`, `SqliteStore`, `MysqlStore` | Pluggable persistence, selected by config `database.type` |
+| Protection | `ProtectionListener`, `WardBlocksListener`, `EntryListener`, `WardItemGuardListener`, `SuperWardEventListener` | Event protection engine; ward create/break/pickup; entry alerts; ward-item anti-abuse; feature logging |
+| GUI | `WardMenuListener`, `ShopMenuListener`, `SuperWardMenuListener` | Ward management, Vault shop, "Ward Intelligence" feature menus |
+| Command | `WardCommand`, `WardTab` | `/ward` handler + tab completion |
+| Support | `RecipeLoader`, `WardParticleTask`, `Msg`, `TrustLevel`, `WardFlag`, `WardFeature` | Config-driven recipes; border particles; color/Adventure util; enums driving trust, flags, features |
 
-| Class | Role |
-|---|---|
-| `MachinaWards` | Plugin lifecycle — initializes DB, managers, listeners, and commands |
-| `Ward` | Data model: UUID, owner, world, coords, radius, tier, members |
-| `WardManager` | Central business logic — in-memory cache (`ConcurrentHashMap`), permission limit checks, containment queries, alert cooldowns |
-| `SqliteStore` | DAO — SQLite (`wards.db`) with 3 tables: `wards`, `members`, `logs` |
-| `WardCommand` | `/ward` command handler (help, shop, list, addmember, removemember) |
+### Storage layer
 
-### Listeners
+- `AbstractStore` holds all shared JDBC logic: schema DDL (6 tables: `wards`, `members`, `logs`, `ward_features`, `feature_logs`, `ward_flags`), idempotent try-`ALTER` migrations (no version table), and the threading model — a single-thread `MachinaWards-DB` executor where **writes are async fire-and-forget, reads block the caller**. `ensureConnected()` revalidates/reopens the connection per operation.
+- `SqliteStore` → `plugins/MachinaWards/MachinaWards.db`, WAL mode. `MysqlStore` → plain `DriverManager` (no pool). Subclasses only override connection/dialect hooks.
+- `onDisable` calls `manager.flush()` → `store.shutdown()` to drain the write queue. Live migration: `/ward admin migrate mysql`.
 
-| Listener | Purpose |
-|---|---|
-| `ProtectionListener` | Blocks non-members from placing/breaking/interacting inside wards |
-| `WardBlocksListener` | Detects crafted ward block placement to create wards |
-| `EntryListener` | Alerts owner when a non-member enters a ward (90s cooldown) |
-| `WardMenuListener` | Inventory-based GUI for ward management |
-| `ShopMenuListener` | Economy shop GUI for purchasing ward items |
+### WardManager
 
-### Data Flow
+In-memory source of truth (all `ConcurrentHashMap`): main ward map plus byWorld, owner, shortId/name, exact-block, and a **chunk index** (world → packed chunk key → ward ids) that accelerates containment lookups, overlap checks, and the particle task. `loadAll()` bulk-loads everything in 4 queries at startup; every mutation updates memory + indexes + store together.
+
+**Containment geometry is Chebyshev (axis-aligned square), not circular**, despite "shape" naming: `region.shape: column` = full-height square column; any other value = cube (Y checked too).
+
+### Trust, flags, features
+
+- `TrustLevel`: per-member, `MEMBER` (full build) or `VISITOR` (interact-only: doors, chests; no place/break/buckets). Unknown/legacy defaults to MEMBER. Server-wide kill switch: `trust_levels.enabled`.
+- `WardFlag`: per-ward opt-outs, default protection ON — `ALLOW_PVP`, `ALLOW_MOB_DAMAGE`.
+- `WardFeature`: five "super ward" monitoring features (creeper_alert, mob_kills_player, mob_kills_entity, player_death, explosion_log), granted per-tier via `wards.<tier>.features`, logged to `feature_logs`, managed in the Ward Intelligence GUI.
+
+`ProtectionListener` is ~18 handlers at `LOWEST` priority, each toggleable under `protection.*` (explosions, fire, pistons, fluid flow, entity grief, PVP, vehicles, hanging, crop trample, etc.). It distinguishes build vs interact (VISITOR may interact, not build); `wards.admin` bypasses all. Explosions strip warded blocks from the event `blockList` rather than cancelling.
+
+### Data flow
 
 ```
-/ward command → WardCommand → WardManager → SqliteStore
-Block placed  → WardBlocksListener → WardManager → SqliteStore (create ward)
-Player move   → EntryListener → WardManager (containment check) → alert
-Block event   → ProtectionListener → WardManager (containment check) → cancel
+/ward …            → WardCommand → WardManager → DataStore
+GUI click          → *MenuListener → WardManager → DataStore
+Ward block placed  → WardBlocksListener → WardManager (create; checks world/height/limit/overlap)
+Block/entity event → ProtectionListener → containment + trust/flags → cancel
+Player move        → EntryListener → cooldown + logs table → alerts to owner & members
+Monitored event    → SuperWardEventListener → feature_logs table
 ```
+
+### GUI conventions (all menu listeners)
+
+- Inventories are identified by **stripped title strings** (`"Ward Menu"`, `"Ward Members"`, `"Trust: <name>"`, `"Ward Shop"`, `"Ward Intelligence"`, `"feat:<id>"`); all handled clicks are cancelled.
+- Buttons carry state in `PersistentDataContainer`: `tierKey` is **dual-purpose** (tier string on ward/shop items, ward UUID on menu buttons), `actionKey` holds parameterized actions (`flag:<id>`, `set_trust:<id>`, `page_next:<n>`), plus `memberKey`/`featureKey`.
+- Menu navigation closes the inventory and reopens the target on the next tick.
+- Rename / entry-message / add-member use a chat-capture flow: pending-state maps consumed by an `AsyncPlayerChatEvent` handler, mutation run back on the main thread; state cleared on quit.
+- Ward items are identified **only** by the tier tag in PDC, never by material.
+
+### Lifecycle gotchas
+
+- Vault economy hook and `/ward` command registration are **deferred one tick** after `onEnable` so economy providers register first; `ShopMenuListener` is only registered if an economy resolves (shop silently disabled otherwise).
+- `WardParticleTask` repeats every `particles.interval_ticks` (default 40) and only renders wards in loaded chunks via the chunk index.
+- `/ward reload` re-reads config, shape, particle task, and re-registers recipes.
+
+### `/ward` command surface
+
+`help`, `list`, `info [id|name]`, `tp <id|name>`, `compass [id|name]`, `nearby [radius]`, `transfer [<id>] <player>`, `addmember <name>`, `removemember <name>` (member commands act on the ward you're standing in), `shop`, `reload` (admin), `admin {list [player], delete <id>, tp <id|name>, stats, migrate mysql}`.
 
 ### Configuration (`src/main/resources/config.yml`)
 
-- **Shape:** `column` (vertical cylinder) or 3D sphere
-- **Ward tiers:** `basic` (Sea Lantern, r=12) and `advanced` (Beacon, r=20) — configurable prices, radii, and crafting recipes
-- **Worlds:** Whitelist of allowed worlds (empty = all)
-- **Alerts:** Title + action bar notifications, toggleable per ward
+- `database.*` — sqlite (default) or mysql
+- `region.shape`, `worlds` (whitelist, empty = all), `height.min_y/max_y` placement limits
+- `wards.*` — tiers are **dynamic config keys**, not hardcoded. Shipped: `basic` (LANTERN, r=12, 100), `advanced` (BEACON, r=20, 500), `super` (CRYING_OBSIDIAN, r=30, 2500, unlimited members, all five features). Each tier: display_name, result_material, price, radius, max_members (-1 = unlimited), 3x3 `custom_recipe`, optional `features`
+- `protection.*` (17 toggles), `alerts.*` (cooldown default 90s), `entry.*` (visitor warning), `pickup.confirm_ms` (sneak+right-click ×2 to pick a ward up), `trust_levels.enabled`, `members.notify_*`, `sounds.*`, `particles.*`
 
-### Permission System
+### Permissions
 
-- `wards.admin` — administrative access
-- `wards.player.<N>` — allows the player to own up to N wards (e.g. `wards.player.3`)
+- `wards.admin` — full bypass/manage-any (default op)
+- `wards.place` — required to place ward blocks (default true)
+- `wards.player.<N>` — own up to N wards; multiple grants resolve to the **max** N
+
+### Version/doc notes
+
+Version truth is git history (`v2.1.0`, Minecraft 26.1 compat); `plugin.yml` (2.0.0) and `CHANGELOG.md` (v1.9.1) lag behind. Player-facing docs: `WIKI.md`; Modrinth listing + v2.0 changelog: `MODRINTH.md`.

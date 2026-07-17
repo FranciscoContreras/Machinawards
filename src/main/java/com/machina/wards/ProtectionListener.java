@@ -19,8 +19,6 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.vehicle.VehicleDamageEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
 
-// Purpur-specific events are handled in PurpurProtectionListener (registered conditionally)
-
 import java.util.UUID;
 
 public class ProtectionListener implements Listener {
@@ -87,7 +85,6 @@ public class ProtectionListener implements Listener {
     }
 
     // ── Explosions ────────────────────────────────────────────────────────────
-    // Note: Pre*ExplodeEvent Purpur handlers are in PurpurProtectionListener (registered conditionally)
 
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onEntityExplosion(EntityExplodeEvent e) {

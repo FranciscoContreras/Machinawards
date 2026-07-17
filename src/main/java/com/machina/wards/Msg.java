@@ -31,9 +31,16 @@ final class Msg {
         return ChatColor.translateAlternateColorCodes('&', sb.toString());
     }
 
+    // Parses the §-coded output of c(), including the §x§R§R§G§G§B§B hex form.
+    private static final LegacyComponentSerializer LEGACY_SECTION = LegacyComponentSerializer.builder()
+            .character(LegacyComponentSerializer.SECTION_CHAR)
+            .hexColors()
+            .useUnusualXRepeatedCharacterHexFormat()
+            .build();
+
     // Converts the same &X / &#RRGGBB format as c() into an Adventure Component.
     static Component component(String s) {
-        return LegacyComponentSerializer.legacyAmpersand().deserialize(c(s));
+        return LEGACY_SECTION.deserialize(c(s));
     }
 
     // Alias — used throughout the codebase.
@@ -48,8 +55,12 @@ final class Msg {
         String lower = name.toLowerCase(Locale.ROOT);
         NamespacedKey key = lower.contains(":") ? NamespacedKey.fromString(lower) : NamespacedKey.minecraft(lower);
         if (key != null) {
-            Sound s = Registry.SOUNDS.get(key);
-            if (s != null) return s;
+            try {
+                Sound s = Registry.SOUNDS.get(key);
+                if (s != null) return s;
+            } catch (LinkageError | RuntimeException ignored) {
+                // Registry.SOUNDS is unavailable on some older servers (pre-1.21.3 Sound was an enum) — fall through to valueOf
+            }
         }
         try {
             //noinspection deprecation

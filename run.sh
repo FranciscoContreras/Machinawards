@@ -3,7 +3,11 @@ set -e
 
 # Paths (relative to project root)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SPIGOT_JAR="$SCRIPT_DIR/spigot-api-26.1.2-R0.1-SNAPSHOT-shaded.jar"
+# Compile against the OLDEST supported API — that floor is what keeps one jar
+# compatible from 1.21.x through 26.x (api-version is a minimum, newer servers
+# stay backward compatible). Do not bump this to a newer API jar unless the
+# plugin is meant to drop older servers.
+SPIGOT_JAR="$SCRIPT_DIR/spigot-api-1.21.8-R0.1-SNAPSHOT-shaded.jar"
 VAULT_JAR="$SCRIPT_DIR/test-server/plugins/Vault.jar"
 SRC_DIR=src/main/java
 RES_DIR=src/main/resources

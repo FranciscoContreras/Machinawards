@@ -1,8 +1,6 @@
 # MachinaWards
 
-Protect your builds with configurable land claim wards — no grief, no drama.
-
-MachinaWards lets players place physical ward blocks to claim and protect an area. Members can be added by the owner, events are logged, and outsiders are stopped cold. Three tiers of wards scale from starter bases to high-value infrastructure.
+Physical land claim protection for Spigot, Paper & Purpur 26.1+. Place ward blocks to protect builds from griefing, manage members via GUI, track events with Ward Intelligence, and customize tiers, radii, and recipes in config.
 
 ---
 
