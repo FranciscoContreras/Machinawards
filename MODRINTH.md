@@ -4,6 +4,14 @@ Project: https://modrinth.com/plugin/wards (ID SX98EKcZ)
 
 ## Changelog
 
+### v2.3.0 — Quality of Life
+- **`/ward who`** — instantly see who owns the ward you are standing in and what you are allowed to do there (owner / trust level / not a member).
+- **`/ward list [page]`** — ward lists are now paginated (8 per page, oldest first) so large holdings no longer flood chat.
+- **Transfer confirmation** — `/ward transfer` now sends an offer the recipient must accept via clickable **[ACCEPT] / [DECLINE]** chat buttons (or `/ward accept` / `/ward decline`). Offers expire after 60 seconds (configurable: `transfer.request_timeout_seconds`), and the recipient's ward limit is enforced at both offer and accept time — no more surprise wards. Admin transfers remain instant and still work for offline recipients.
+- **`/ward admin cleanup <days>`** — preview, then confirm-delete wards whose owners have been offline for N+ days. Owners who are online or have no recorded last-seen time are always kept, and the scan runs off the main thread.
+- **Console-friendly admin commands** — `/ward admin list|delete|cleanup|stats|migrate` now work from console and RCON, not just in-game.
+- **Faster, safer name lookups** — `addmember` / `removemember` / `transfer` and the GUI Add Member flow check the local usercache first and only fall back to a full profile lookup on a cache miss; players who never joined this server are rejected exactly as the error message says.
+
 ### v2.2.0 — Universal 1.21 → 26.x
 - One jar for every Paper/Purpur server from Minecraft 1.21 through 26.2 — compiled against the 1.21 API floor (`api-version: 1.21`); newer servers stay backward compatible.
 - Verified by booting on Paper 1.21.1, Purpur 1.21.11, Paper 26.1.2, Purpur 26.1.2, and Paper 26.2.
@@ -182,11 +190,13 @@ If Vault is installed with an economy provider (e.g. EssentialsX), players can p
 |---------|-------------|
 | `/ward` | Show help |
 | `/ward shop` | Open the ward shop (requires Vault) |
-| `/ward list` | List your wards with names, tiers, worlds, and coords |
+| `/ward list [page]` | List your wards with names, tiers, worlds, and coords (8 per page) |
+| `/ward who` | Show who owns the ward you are standing in and your access level |
 | `/ward tp <id\|name>` | Teleport to one of your wards |
 | `/ward compass [id\|name]` | Point your compass at a ward |
-| `/ward transfer <player>` | Transfer your nearby ward to another player |
-| `/ward transfer <id> <player>` | Transfer a specific ward to another player |
+| `/ward transfer <player>` | Offer your nearby ward to another player (they must accept) |
+| `/ward transfer <id> <player>` | Offer a specific ward to another player |
+| `/ward accept` / `/ward decline` | Accept or decline a pending ward transfer offer |
 | `/ward addmember <player>` | Add a member to your nearby ward |
 | `/ward removemember <player>` | Remove a member from your nearby ward |
 | `/ward info [id\|name]` | Show info about a nearby or specific ward |
@@ -195,6 +205,7 @@ If Vault is installed with an economy provider (e.g. EssentialsX), players can p
 | `/ward admin delete <id\|name>` | *(admin)* Delete a ward by ID or name |
 | `/ward admin tp <id\|name>` | *(admin)* Teleport to any ward |
 | `/ward admin stats` | *(admin)* Show total wards, per-world breakdown, members, and owner count |
+| `/ward admin cleanup <days>` | *(admin)* Preview, then confirm-delete wards of owners offline ≥ N days |
 | `/ward admin migrate mysql` | *(admin)* Copy all ward data from SQLite to MySQL |
 | `/ward reload` | *(admin)* Reload config and re-register recipes |
 
@@ -244,7 +255,7 @@ When a non-member enters a ward they see an action bar notification showing the 
 
 ## Ownership Transfer
 
-`/ward transfer <player>` while standing in a ward transfers ownership to another player. Use `/ward transfer <id> <player>` to transfer from anywhere. The new owner is notified immediately if online.
+`/ward transfer <player>` while standing in a ward offers ownership to another player. Use `/ward transfer <id> <player>` to offer from anywhere. The recipient must be online and accept within 60 seconds (configurable via `transfer.request_timeout_seconds`) using the clickable **[ACCEPT] / [DECLINE]** chat buttons — or `/ward accept` / `/ward decline`. The recipient's ward limit is checked before the transfer completes. Admins transfer instantly, including to offline players.
 
 ---
 
@@ -311,6 +322,7 @@ Everything is configurable in `config.yml`:
 | `entry` | `show_warning_to_visitor` | `true` | Show the entry action bar to the visitor |
 | `entry` | `warning_format` | `&c⚠ Entering &f%ward% &c— owned by &f%owner%` | Default visitor warning (overridden per-ward by Entry Message) |
 | `pickup` | `confirm_ms` | `5000` | Confirmation window in ms for sneak+click pickup |
+| `transfer` | `request_timeout_seconds` | `60` | How long a `/ward transfer` offer stays valid |
 | `protection` | *(see table above)* | `true` | Individual protection category toggles |
 | `trust_levels` | `enabled` | `true` | If `false`, Visitors have full Member access |
 | `members` | `notify_on_add` | `true` | Notify players when they are added to a ward |

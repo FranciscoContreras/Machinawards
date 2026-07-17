@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.3.0
+- `/ward who` — shows who owns the ward you are standing in and your access level (owner / trust level / not a member)
+- `/ward list [page]` — pagination, 8 wards per page sorted oldest-first; big ward lists no longer flood chat
+- Transfer confirmation: `/ward transfer` now sends an offer the recipient must accept via clickable [ACCEPT]/[DECLINE] chat buttons (`/ward accept`, `/ward decline`). Offers expire after `transfer.request_timeout_seconds` (default 60s); the recipient's ward limit is enforced at offer and accept time. Admin transfers remain instant and still work for offline recipients.
+- `/ward admin cleanup <days>` — preview, then confirm-delete wards whose owners have been offline ≥ N days (owners with no recorded last-seen time or currently online are always kept)
+- Player-name lookups (`addmember`, `removemember`, `transfer`, GUI Add Member) check the local usercache first and only fall back to a full profile lookup on a cache miss; players who never joined this server are now rejected exactly as the error message always claimed
+- Admin commands (`/ward admin list|delete|cleanup|stats|migrate`) now work from console and RCON, not just in-game (`admin tp` still requires a player)
+- `/ward admin cleanup` scans player last-seen data off the main thread
+- Verified by booting Paper 1.21.8
+
+---
+
 ## v2.2.0
 - Universal compatibility: one jar now runs on Paper/Purpur 1.21 through 26.2
 - Build compiles against spigot-api 1.21.8 (the compatibility floor) with `api-version: '1.21'` — api-version is a minimum, newer servers stay backward compatible

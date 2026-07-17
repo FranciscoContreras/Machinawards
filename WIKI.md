@@ -1,6 +1,6 @@
 # MachinaWards
 
-Physical land claim protection for Spigot, Paper & Purpur 26.1+. Place ward blocks to protect builds from griefing, manage members via GUI, track events with Ward Intelligence, and customize tiers, radii, and recipes in config.
+Physical land claim protection for Paper & Purpur 1.21 through 26.x. Place ward blocks to protect builds from griefing, manage members via GUI, track events with Ward Intelligence, and customize tiers, radii, and recipes in config.
 
 ---
 
@@ -137,11 +137,13 @@ If Vault is installed with an economy provider (e.g. EssentialsX), players can p
 |---------|-------------|
 | `/ward` | Show help |
 | `/ward shop` | Open the ward shop (requires Vault) |
-| `/ward list` | List your wards with names, tiers, worlds, and coords |
+| `/ward list [page]` | List your wards with names, tiers, worlds, and coords (8 per page) |
+| `/ward who` | Show who owns the ward you are standing in and your access level |
 | `/ward tp <id\|name>` | Teleport to one of your wards |
 | `/ward compass [id\|name]` | Point your compass at a ward |
-| `/ward transfer <player>` | Transfer your nearby ward to another player |
-| `/ward transfer <id> <player>` | Transfer a specific ward to another player |
+| `/ward transfer <player>` | Offer your nearby ward to another player (they must accept) |
+| `/ward transfer <id> <player>` | Offer a specific ward to another player |
+| `/ward accept` / `/ward decline` | Accept or decline a pending ward transfer offer |
 | `/ward addmember <player>` | Add a member to your nearby ward |
 | `/ward removemember <player>` | Remove a member from your nearby ward |
 | `/ward info [id\|name]` | Show info about a nearby or specific ward |
@@ -150,6 +152,7 @@ If Vault is installed with an economy provider (e.g. EssentialsX), players can p
 | `/ward admin delete <id\|name>` | *(admin)* Delete a ward by ID or name |
 | `/ward admin tp <id\|name>` | *(admin)* Teleport to any ward |
 | `/ward admin stats` | *(admin)* Show total wards, per-world breakdown, members, and owner count |
+| `/ward admin cleanup <days>` | *(admin)* Preview, then confirm-delete wards of owners offline ≥ N days |
 | `/ward admin migrate mysql` | *(admin)* Copy all ward data from SQLite to MySQL |
 | `/ward reload` | *(admin)* Reload config and re-register recipes |
 
@@ -199,7 +202,7 @@ When a non-member enters a ward they see an action bar notification showing the 
 
 ## Ownership Transfer
 
-`/ward transfer <player>` while standing in a ward transfers ownership to another player. Use `/ward transfer <id> <player>` to transfer from anywhere. The new owner is notified immediately if online.
+`/ward transfer <player>` while standing in a ward offers ownership to another player. Use `/ward transfer <id> <player>` to offer from anywhere. The recipient must be online and accept within 60 seconds (configurable via `transfer.request_timeout_seconds`) using the clickable **[ACCEPT] / [DECLINE]** chat buttons — or `/ward accept` / `/ward decline`. The recipient's ward limit is checked before the transfer completes. Admins transfer instantly, including to offline players.
 
 ---
 
@@ -266,6 +269,7 @@ Everything is configurable in `config.yml`:
 | `entry` | `show_warning_to_visitor` | `true` | Show the entry action bar to the visitor |
 | `entry` | `warning_format` | `&c⚠ Entering &f%ward% &c— owned by &f%owner%` | Default visitor warning (overridden per-ward by Entry Message) |
 | `pickup` | `confirm_ms` | `5000` | Confirmation window in ms for sneak+click pickup |
+| `transfer` | `request_timeout_seconds` | `60` | How long a `/ward transfer` offer stays valid |
 | `protection` | *(see table above)* | `true` | Individual protection category toggles |
 | `trust_levels` | `enabled` | `true` | If `false`, Visitors have full Member access |
 | `members` | `notify_on_add` | `true` | Notify players when they are added to a ward |
@@ -288,6 +292,6 @@ Color support: all text fields accept `&` color codes and `&#RRGGBB` hex colors.
 
 ## Dependencies
 
-- Spigot / Paper / Purpur 1.21+
+- Paper / Purpur 1.21 through 26.x (Java 21+ on 1.21.x, Java 25+ on 26.1+) — plain Spigot needs legacy v1.9.1
 - **Vault** *(optional)* — required only for the economy shop
 - **MySQL/MariaDB** *(optional)* — only if using the MySQL database backend

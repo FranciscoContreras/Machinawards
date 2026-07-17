@@ -654,7 +654,7 @@ public class WardMenuListener implements Listener {
 
         e.setCancelled(true);
         OfflinePlayer op = Msg.resolveOfflinePlayer(messageText);
-        if (op.getUniqueId() == null) {
+        if (op == null || op.getUniqueId() == null) {
             player.sendMessage(Msg.c("&cPlayer not found (must have joined this server): " + messageText));
             return;
         }

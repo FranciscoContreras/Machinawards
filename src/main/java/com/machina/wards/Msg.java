@@ -70,12 +70,36 @@ final class Msg {
         }
     }
 
-    /** Look up an OfflinePlayer by name — checks online players first, then local usercache. */
-    @SuppressWarnings("deprecation")
+    // Bukkit.getOfflinePlayerIfCached exists on every supported runtime (Paper/Purpur 1.21+)
+    // but is missing from the 1.21.8 compile jar — resolved reflectively once at class load.
+    private static final java.lang.invoke.MethodHandle GET_IF_CACHED;
+    static {
+        java.lang.invoke.MethodHandle h = null;
+        try {
+            h = java.lang.invoke.MethodHandles.publicLookup().findStatic(
+                    Bukkit.class, "getOfflinePlayerIfCached",
+                    java.lang.invoke.MethodType.methodType(OfflinePlayer.class, String.class));
+        } catch (ReflectiveOperationException ignored) {}
+        GET_IF_CACHED = h;
+    }
+
+    /** Look up an OfflinePlayer by name — online players first, then the local usercache,
+     *  then the full profile lookup (may block; only on a cache miss) gated on having
+     *  actually played here. Returns null for players who never joined this server. */
     static OfflinePlayer resolveOfflinePlayer(String name) {
         Player online = Bukkit.getPlayerExact(name);
         if (online != null) return online;
-        return Bukkit.getOfflinePlayer(name);
+        if (GET_IF_CACHED != null) {
+            try {
+                OfflinePlayer cached = (OfflinePlayer) GET_IF_CACHED.invoke(name);
+                if (cached != null) return cached;
+            } catch (Throwable ignored) {}
+        }
+        // Cache miss — usercache entries expire (~1 month) and are capped, so a miss does
+        // NOT mean the player never joined. Resolve the profile and check play history.
+        @SuppressWarnings("deprecation")
+        OfflinePlayer op = Bukkit.getOfflinePlayer(name);
+        return op.hasPlayedBefore() || op.isOnline() ? op : null;
     }
 
     private Msg() {}

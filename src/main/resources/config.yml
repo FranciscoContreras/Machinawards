@@ -32,6 +32,9 @@ entry:
 pickup:
   confirm_ms: 5000
 
+transfer:
+  request_timeout_seconds: 60   # how long a /ward transfer offer stays valid before it expires
+
 protection:
   block_place: true
   block_break: true

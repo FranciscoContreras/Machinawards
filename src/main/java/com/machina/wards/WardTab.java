@@ -12,11 +12,11 @@ import java.util.List;
 public class WardTab implements TabCompleter {
 
     private static final List<String> SUBCOMMANDS = List.of(
-            "help", "reload", "shop", "list", "tp", "compass", "transfer",
-            "addmember", "removemember", "info", "nearby", "admin"
+            "help", "reload", "shop", "list", "who", "tp", "compass", "transfer",
+            "accept", "decline", "addmember", "removemember", "info", "nearby", "admin"
     );
 
-    private static final List<String> ADMIN_SUBCOMMANDS = List.of("list", "delete", "tp", "stats", "migrate");
+    private static final List<String> ADMIN_SUBCOMMANDS = List.of("list", "delete", "tp", "stats", "cleanup", "migrate");
 
     private final WardManager manager;
 
@@ -116,6 +116,12 @@ public class WardTab implements TabCompleter {
         // /ward admin migrate <target>
         if (args.length == 3 && args[0].equalsIgnoreCase("admin") && args[1].equalsIgnoreCase("migrate")) {
             return filter(List.of("mysql"), args[2]);
+        }
+
+        // /ward admin cleanup <days> [confirm]
+        if (args[0].equalsIgnoreCase("admin") && args[1].equalsIgnoreCase("cleanup")) {
+            if (args.length == 3) return filter(List.of("30", "60", "90"), args[2]);
+            if (args.length == 4) return filter(List.of("confirm"), args[3]);
         }
 
         // /ward info <id|name>

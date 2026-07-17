@@ -103,6 +103,31 @@
 | G14 | Tab completion (prefix) | Type `/ward h` + Tab | Suggests: help |
 | G15 | Tab completion (addmember) | Type `/ward addmember ` + Tab | Suggests online player names |
 
+## G2. v2.3.0 Commands
+
+| # | Test | Steps | Expected |
+|---|------|-------|----------|
+| G16 | /ward who (inside) | Stand in someone's ward, `/ward who` | Shows ward name, owner, and your standing (owner / trust level / not a member) |
+| G17 | /ward who (outside) | Run outside any ward | "This area is unclaimed — no ward here." |
+| G18 | /ward list pagination | Own 9+ wards, `/ward list`, `/ward list 2` | Page 1 shows 8 + "Next page" hint; page 2 shows the rest; header shows "page x/y" |
+| G19 | /ward list bad page | `/ward list 99` / `/ward list abc` | Clamps to last page / defaults to page 1 |
+| G20 | Transfer offer flow | Owner: `/ward transfer <online player>` | Both sides messaged; recipient sees clickable [ACCEPT] | [DECLINE]; separator not clickable |
+| G21 | Transfer accept | Recipient clicks [ACCEPT] (or `/ward accept`) | Ward changes owner; both sides confirmed |
+| G22 | Transfer decline | Recipient clicks [DECLINE] | "declined" both sides; ward unchanged |
+| G23 | Transfer expiry | Wait past `transfer.request_timeout_seconds`, then accept | "That transfer offer has expired." — no transfer |
+| G24 | Transfer offline recipient | `/ward transfer <offline name>` (non-admin) | "That player must be online to accept a ward transfer." |
+| G25 | Transfer no clobber | While offer to X pending, another owner offers X a ward | Second offer rejected: "already has a pending transfer offer" |
+| G26 | Stale accept button | New offer replaces expired one, click OLD [ACCEPT] button | "That offer is no longer active." — new offer stays pending |
+| G27 | Accept at ward limit | Recipient at `wards.player.N` limit accepts | "You have reached your ward limit… Free a slot and accept again." — offer kept |
+| G28 | Transfer recipient limit | Offer to a player at their ward limit | Offer refused at send time |
+| G29 | Admin transfer instant | Admin `/ward transfer <id> <any name>` | Immediate transfer, works for offline recipients |
+| G30 | admin cleanup preview | Console/in-game: `/ward admin cleanup 30` | Lists wards of owners offline ≥30 days (max 10 + count) with confirm hint; deletes nothing |
+| G31 | admin cleanup confirm | `/ward admin cleanup 30 confirm` | Deletes those wards, reports count |
+| G32 | admin cleanup safety | Owner online or never-seen (lastPlayed 0) | Their wards never listed/deleted |
+| G33 | Console admin | From console: `/ward admin list`, `stats`, `cleanup 30` | All work (admin tp still "Players only.") |
+| G34 | Uncached name lookup | `/ward addmember <player absent >1 month but has played>` | Member added (usercache miss falls back to profile lookup) |
+| G35 | Never-joined name | `/ward addmember NoSuchPlayer123` | "Player not found (must have joined this server)" |
+
 ## H. Shop (Vault required)
 
 | # | Test | Steps | Expected |
