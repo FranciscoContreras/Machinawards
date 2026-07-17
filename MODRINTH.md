@@ -1,6 +1,7 @@
 # MachinaWards — Modrinth listing mirror
 
 Project: https://modrinth.com/plugin/wards (ID SX98EKcZ)
+Listing links: source → https://github.com/FranciscoContreras/Machinawards, issues → …/issues, wiki → …/blob/main/WIKI.md
 
 ## Changelog
 
