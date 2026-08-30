@@ -5,6 +5,13 @@ Listing links: source → https://github.com/FranciscoContreras/Machinawards, is
 
 ## Changelog
 
+### v2.3.1 — Verified on Minecraft 26.2
+- **Confirmed working on Minecraft 26.2.** Paper 26.2 ships Adventure 5, which removed a batch of long-deprecated chat API — the change that breaks a lot of older plugins on 26.2. MachinaWards is not one of them: the full Adventure surface it uses was audited against the removal list and needed no changes.
+- **Proven, not assumed.** Every Adventure call site — the `/ward transfer` [ACCEPT]/[DECLINE] buttons, the colored titles and action bars, and the `&`/`&#RRGGBB` color parsing — was executed directly against the Adventure 5 libraries Paper 26.2 bundles. Everything linked and rendered correctly, so there are no hidden runtime errors waiting on a command you rarely run.
+- **Boot-verified at both ends of the range:** Paper 26.2 (Java 25) and Paper 1.21.8 (the compatibility floor), each a clean enable with zero errors.
+- **No functional changes.** Your wards, members, database, and config carry over untouched — drop the new jar in and restart.
+- Housekeeping: corrected the version metadata on the old v2.0.1 download, which incorrectly listed Minecraft 1.16–1.20 and the Bukkit/Spigot loaders. The v2.x line has always been Paper/Purpur 1.21+; Spigot users still need v1.9.1.
+
 ### v2.3.0 — Quality of Life
 - **`/ward who`** — instantly see who owns the ward you are standing in and what you are allowed to do there (owner / trust level / not a member).
 - **`/ward list [page]`** — ward lists are now paginated (8 per page, oldest first) so large holdings no longer flood chat.

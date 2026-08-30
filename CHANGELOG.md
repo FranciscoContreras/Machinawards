@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.3.1
+- Verified against Minecraft 26.2 (Paper 26.2 build 121, Purpur 26.2), which bundles Adventure 5 — the release that removed previously-deprecated Adventure API
+- Audited every Adventure call site against the Adventure 4 → 5 removal list: no code changes were needed. The plugin already uses only the modern factories (`ClickEvent.runCommand`, `HoverEvent.showText`); the removed surface (`ClickEvent#create(Action, String)`, `ClickEvent#value()`, `BookMeta` as an Adventure `Book`) is not used anywhere in the codebase
+- Linkage proven, not assumed: a probe reproducing every Adventure call site — the `/ward transfer` [ACCEPT]/[DECLINE] buttons, `Msg.component()`'s legacy §-hex serializer, and the entry/placement titles — was compiled against Adventure 4.17 (the build classpath) and executed against the Adventure 5.2.0 jars Paper 26.2 ships. All sites linked and rendered correctly, so no `NoSuchMethodError` at runtime
+- No functional changes; wards, data, and config are untouched. This is a compatibility-verification release
+- Corrected historical version metadata on Modrinth: v2.0.1 had been published claiming Minecraft 1.16–1.20 and the bukkit/spigot loaders, which v2.x never supported
+- Verified by booting Paper 26.2 (Java 25) and Paper 1.21.8 (the compatibility floor) — clean enable, zero errors on both
+
+---
+
 ## v2.3.0
 - `/ward who` — shows who owns the ward you are standing in and your access level (owner / trust level / not a member)
 - `/ward list [page]` — pagination, 8 wards per page sorted oldest-first; big ward lists no longer flood chat

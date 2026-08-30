@@ -123,4 +123,6 @@ Monitored event    → SuperWardEventListener → feature_logs table
 
 ### Version/doc notes
 
-Version truth is git history (`v2.1.0`, Minecraft 26.1 compat); `plugin.yml` (2.0.0) and `CHANGELOG.md` (v1.9.1) lag behind. Player-facing docs: `WIKI.md`; Modrinth listing + v2.0 changelog: `MODRINTH.md`.
+Version truth is `plugin.yml` (currently **2.3.1**) plus the git tags, which now match: `v2.0.1`, `v2.1.0`, `v2.2.0` (at a00b5c9, shared with the unreleased v2.1.1), `v2.3.0`, `v2.3.1`. `CHANGELOG.md` is current and leads with the newest release. Player-facing docs: `WIKI.md`; Modrinth listing mirror + full changelog: `MODRINTH.md` (keep its `### vX.Y.Z` entries in sync with what is actually published at https://modrinth.com/plugin/wards).
+
+Compatibility claim to preserve when editing docs: one jar for Paper/Purpur **1.21 through 26.2**, verified by booting the floor (Paper 1.21.8) and the ceiling (Paper 26.2) each release. Minecraft 26.2 bundles **Adventure 5**, which removed deprecated Adventure API — the plugin deliberately sticks to the modern factories (`ClickEvent.runCommand`, `HoverEvent.showText`) so one jar links on both Adventure 4 and 5. Do not introduce `ClickEvent#create(Action, String)`, `ClickEvent#value()`, or `BookMeta`-as-`Book`; they compile against the 4.17 jars in `libs/` but fail at runtime on 26.2.
