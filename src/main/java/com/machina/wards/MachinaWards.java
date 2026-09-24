@@ -85,6 +85,7 @@ public class MachinaWards extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        WardGui.closeAll();
         if (particleTask != null) particleTask.cancel();
         if (manager != null) manager.flush();
         getLogger().info("MachinaWards disabled");

@@ -92,11 +92,12 @@ Monitored event    → SuperWardEventListener → feature_logs table
 
 ### GUI conventions (all menu listeners)
 
-- Inventories are identified by **stripped title strings** (`"Ward Menu"`, `"Ward Members"`, `"Trust: <name>"`, `"Ward Shop"`, `"Ward Intelligence"`, `"feat:<id>"`); all handled clicks are cancelled.
-- Buttons carry state in `PersistentDataContainer`: `tierKey` is **dual-purpose** (tier string on ward/shop items, ward UUID on menu buttons), `actionKey` holds parameterized actions (`flag:<id>`, `set_trust:<id>`, `page_next:<n>`), plus `memberKey`/`featureKey`.
-- Menu navigation closes the inventory and reopens the target on the next tick.
-- Rename / entry-message / add-member use a chat-capture flow: pending-state maps consumed by an `AsyncPlayerChatEvent` handler, mutation run back on the main thread; state cleared on quit.
-- Ward items are identified **only** by the tier tag in PDC, never by material.
+- Menus are identified by their **holder object, never by title**: every chest menu is created through `WardGui` (an `InventoryHolder` carrying a `Kind` — `MAIN`, `MEMBERS`, `TRUST`, `SHOP`, `FEATURES`, `FEATURE` — plus ward UUID, member UUID, feature id and page). Titles are display-only.
+- Click contract, in order: return unless the top inventory's holder is a `WardGui`; cancel the event (any click while one of our menus is open, in either inventory); act only on raw slots inside the top inventory; ignore `DOUBLE_CLICK`; re-resolve the ward from the holder and close with an error if it is gone. `InventoryDragEvent` is cancelled when any dragged slot is in the top inventory.
+- Buttons carry their action in PDC `actionKey` (`rename`, `flag:<id>`, `set_trust:<id>`, `buy:<tier>`, `page_next` …) plus `memberKey`/`featureKey` where needed; ward id and page live on the holder. `tierKey` is only on ward items: ward items are identified **only** by that tier tag, never by material. A shop purchase builds one fresh item via `RecipeLoader.wardItem(plugin, tier)`, only after `EconomyResponse.transactionSuccess()`.
+- Destructive buttons (Remove Member, Clear Logs) go through `WardGui.confirm`: two clicks on the same key within `pickup.confirm_ms`, no shift-click (Bedrock-safe).
+- Menu navigation closes the inventory and reopens the target on the next tick; DB reads (History, View Logs) close the menu and run async. Menu sounds go through `WardGui.sound` (`sounds.menu_click|menu_success|menu_error`).
+- Rename / entry-message / add-member use a chat-capture flow: pending-state maps consumed by an `AsyncPlayerChatEvent` handler, 60s expiry, `cancel` aborts, mutation run back on the main thread; pending state and armed confirms cleared on quit. `onDisable` calls `WardGui.closeAll()`.
 
 ### Lifecycle gotchas
 
@@ -123,6 +124,6 @@ Monitored event    → SuperWardEventListener → feature_logs table
 
 ### Version/doc notes
 
-Version truth is `plugin.yml` (currently **2.3.1**) plus the git tags, which now match: `v2.0.1`, `v2.1.0`, `v2.2.0` (at a00b5c9, shared with the unreleased v2.1.1), `v2.3.0`, `v2.3.1`. `CHANGELOG.md` is current and leads with the newest release. Player-facing docs: `WIKI.md`; Modrinth listing mirror + full changelog: `MODRINTH.md` (keep its `### vX.Y.Z` entries in sync with what is actually published at https://modrinth.com/plugin/wards).
+Version truth is `plugin.yml` (currently **2.4.0**) plus the git tags, which now match: `v2.0.1`, `v2.1.0`, `v2.2.0` (at a00b5c9, shared with the unreleased v2.1.1), `v2.3.0`, `v2.3.1`, `v2.4.0`. `CHANGELOG.md` is current and leads with the newest release. Player-facing docs: `WIKI.md`; Modrinth listing mirror + full changelog: `MODRINTH.md` (keep its `### vX.Y.Z` entries in sync with what is actually published at https://modrinth.com/plugin/wards).
 
 Compatibility claim to preserve when editing docs: one jar for Paper/Purpur **1.21 through 26.2**, verified by booting the floor (Paper 1.21.8) and the ceiling (Paper 26.2) each release. Minecraft 26.2 bundles **Adventure 5**, which removed deprecated Adventure API — the plugin deliberately sticks to the modern factories (`ClickEvent.runCommand`, `HoverEvent.showText`) so one jar links on both Adventure 4 and 5. Do not introduce `ClickEvent#create(Action, String)`, `ClickEvent#value()`, or `BookMeta`-as-`Book`; they compile against the 4.17 jars in `libs/` but fail at runtime on 26.2.

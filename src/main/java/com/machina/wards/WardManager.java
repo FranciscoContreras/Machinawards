@@ -1,5 +1,6 @@
 package com.machina.wards;
 
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -107,18 +108,22 @@ public class WardManager {
         store.deleteWard(id);
     }
 
-    /** Add a member with MEMBER trust (backward-compatible default). */
-    public void addMember(UUID wardId, UUID member) {
-        addMember(wardId, member, TrustLevel.MEMBER);
+    /** Add a member with MEMBER trust (backward-compatible default). Returns false if unchanged. */
+    public boolean addMember(UUID wardId, UUID member) {
+        return addMember(wardId, member, TrustLevel.MEMBER);
     }
 
-    public void addMember(UUID wardId, UUID member, TrustLevel level) {
+    /** Returns false (no memory/store/notification change) for a missing ward, the owner, or an existing member. */
+    public boolean addMember(UUID wardId, UUID member, TrustLevel level) {
         Ward w = wards.get(wardId);
-        if (w == null) return;
+        if (w == null) return false;
+        if (member.equals(w.owner())) return false;
+        if (w.members().contains(member)) return false;
         w.members().add(member);
         w.setMemberTrust(member, level);
         store.addMember(wardId, member, level.id());
         notifyMemberAdded(w, member, level);
+        return true;
     }
 
     private void notifyMemberAdded(Ward w, UUID memberId, TrustLevel level) {
@@ -154,13 +159,15 @@ public class WardManager {
         notifyMemberRemoved(w, member);
     }
 
-    /** Rename a ward and keep name index consistent. */
+    /** Rename a ward and keep name index consistent. Does not validate; stored text keeps colour codes. */
     public void renameWard(UUID wardId, String newName) {
         Ward w = wards.get(wardId);
         if (w == null) return;
-        if (!w.name().isEmpty()) nameIndex.remove(w.name().toLowerCase(java.util.Locale.ROOT));
+        String oldKey = nameKey(w.name());
+        if (!oldKey.isEmpty()) nameIndex.remove(oldKey, wardId);
         w.setName(newName);
-        if (!newName.isEmpty()) nameIndex.put(newName.toLowerCase(java.util.Locale.ROOT), wardId);
+        String newKey = nameKey(newName);
+        if (!newKey.isEmpty()) nameIndex.put(newKey, wardId);
         store.saveWard(w);
     }
 
@@ -190,13 +197,15 @@ public class WardManager {
         UUID id = shortIdIndex.get(lower);
         if (id != null) return wards.get(id);
         // Exact name
-        id = nameIndex.get(lower);
+        id = nameIndex.get(nameKey(input));
         if (id != null) return wards.get(id);
         // UUID prefix — linear scan (rare admin use)
         for (Ward w : wards.values()) if (w.id().toString().startsWith(lower)) return w;
         // Name prefix — linear scan (rare)
+        String key = nameKey(input);
+        if (key.isEmpty()) return null;
         for (Ward w : wards.values())
-            if (!w.name().isEmpty() && w.name().toLowerCase(java.util.Locale.ROOT).startsWith(lower)) return w;
+            if (nameKey(w.name()).startsWith(key)) return w;
         return null;
     }
 
@@ -514,13 +523,33 @@ public class WardManager {
 
     private void indexName(Ward w) {
         shortIdIndex.put(w.shortId().toLowerCase(java.util.Locale.ROOT), w.id());
-        if (!w.name().isEmpty())
-            nameIndex.put(w.name().toLowerCase(java.util.Locale.ROOT), w.id());
+        String key = nameKey(w.name());
+        if (!key.isEmpty()) nameIndex.put(key, w.id());
     }
 
     private void unindexName(Ward w) {
         shortIdIndex.remove(w.shortId().toLowerCase(java.util.Locale.ROOT));
-        if (!w.name().isEmpty())
-            nameIndex.remove(w.name().toLowerCase(java.util.Locale.ROOT));
+        String key = nameKey(w.name());
+        // Only unindex if this ward still owns the key — avoids unindexing a surviving legacy duplicate.
+        if (!key.isEmpty()) nameIndex.remove(key, w.id());
+    }
+
+    /** Strips colour codes and trims — the normalised form used for name lookups and uniqueness. */
+    public static String plainName(String name) {
+        if (name == null) return "";
+        return ChatColor.stripColor(Msg.c(name)).trim();
+    }
+
+    /** Lower-cased normalised name key used by the name index. */
+    public static String nameKey(String name) {
+        return plainName(name).toLowerCase(java.util.Locale.ROOT);
+    }
+
+    /** Whether a name (normalised) is already taken by a ward other than exceptWardId. */
+    public boolean isNameTaken(String name, UUID exceptWardId) {
+        String key = nameKey(name);
+        if (key.isEmpty()) return false;
+        UUID id = nameIndex.get(key);
+        return id != null && !id.equals(exceptWardId) && wards.containsKey(id);
     }
 }

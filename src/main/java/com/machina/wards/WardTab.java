@@ -38,7 +38,8 @@ public class WardTab implements TabCompleter {
                         ? manager.all() : manager.wardsOwnedBy(p.getUniqueId());
                 for (Ward w : source) {
                     suggestions.add(w.shortId());
-                    if (!w.name().isEmpty()) suggestions.add(w.name());
+                    String plain = WardManager.plainName(w.name());
+                    if (!plain.isEmpty() && !plain.chars().anyMatch(Character::isWhitespace)) suggestions.add(plain);
                 }
             }
             return filter(suggestions, args[1]);
@@ -52,7 +53,8 @@ public class WardTab implements TabCompleter {
                         ? manager.all() : manager.wardsOwnedBy(p.getUniqueId());
                 for (Ward w : source) {
                     suggestions.add(w.shortId());
-                    if (!w.name().isEmpty()) suggestions.add(w.name());
+                    String plain = WardManager.plainName(w.name());
+                    if (!plain.isEmpty() && !plain.chars().anyMatch(Character::isWhitespace)) suggestions.add(plain);
                 }
             }
             return filter(suggestions, args[1]);
@@ -98,7 +100,8 @@ public class WardTab implements TabCompleter {
             List<String> ids = new ArrayList<>();
             for (Ward w : manager.all()) {
                 ids.add(w.shortId());
-                if (!w.name().isEmpty()) ids.add(w.name());
+                String plain = WardManager.plainName(w.name());
+                if (!plain.isEmpty() && !plain.chars().anyMatch(Character::isWhitespace)) ids.add(plain);
             }
             return filter(ids, args[2]);
         }
@@ -108,7 +111,8 @@ public class WardTab implements TabCompleter {
             List<String> ids = new ArrayList<>();
             for (Ward w : manager.all()) {
                 ids.add(w.shortId());
-                if (!w.name().isEmpty()) ids.add(w.name());
+                String plain = WardManager.plainName(w.name());
+                if (!plain.isEmpty() && !plain.chars().anyMatch(Character::isWhitespace)) ids.add(plain);
             }
             return filter(ids, args[2]);
         }
@@ -132,7 +136,8 @@ public class WardTab implements TabCompleter {
                         ? manager.all() : manager.wardsOwnedBy(p.getUniqueId());
                 for (Ward w : source) {
                     suggestions.add(w.shortId());
-                    if (!w.name().isEmpty()) suggestions.add(w.name());
+                    String plain = WardManager.plainName(w.name());
+                    if (!plain.isEmpty() && !plain.chars().anyMatch(Character::isWhitespace)) suggestions.add(plain);
                 }
             }
             return filter(suggestions, args[1]);

@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.4.0
+- Fixed a ward duplication exploit in the shop: with the shop open, a click on a stack of ward items in the player's own inventory was handled as a purchase of the clicked item, and the whole clicked stack was cloned back for one price (ward items stack, so the stack doubled each time). The shop now only handles clicks on its own slots, hands out one ward built fresh by `RecipeLoader.wardItem` per purchase, and checks `EconomyResponse.transactionSuccess()` before giving it
+- Menus are identified by a `WardGui` `InventoryHolder` (kind, ward id, member, feature, page) instead of by title text. Every click in a MachinaWards menu is cancelled, only top-inventory slots act, double-clicks are ignored, and drags onto menu slots are refused. Another plugin's menu with the same title is no longer affected
+- Ward block: left-click mines it (owner break works in survival), right-click opens the menu, sneak+right-click twice picks it up; the pickup prompt says so
+- Every menu button carries description, state and action lore; the PVP and Mob Damage flags keep their own icons and glow when on (no BARRIER for off)
+- Ward menu re-laid out: header item in slot 4 (tier, radius, members, location, ID), ward named in the title. The duplicate Add Member button is gone from the main menu; adding lives on the Members screen, grayed out when the ward is full
+- Remove Member and Clear Logs confirm with a second click within `pickup.confirm_ms` instead of shift-click (Bedrock-safe)
+- Chat prompts (rename, entry message, add member) expire after 60s and accept `cancel`; a rejected name keeps the prompt open
+- Ward names: 1–32 characters, no whitespace, unique server-wide; colour codes are kept for display and name lookups (`/ward tp <name>` etc.) match the colour-stripped name
+- Re-adding an existing member, or the owner, is refused
+- Shop lore shows the formatted price, member cap and feature count, plus a red line when unaffordable; bought wards stack with crafted ones
+- History and View Logs close the menu first and read the database off the main thread
+- Show Radius particles render only for the player who clicked; clicking again restarts them
+- Ward Intelligence is a 36-slot menu; Clear Logs is separated from View Logs
+- New config keys `sounds.menu_click` (`UI_BUTTON_CLICK`), `sounds.menu_success` (`ENTITY_EXPERIENCE_ORB_PICKUP`), `sounds.menu_error` (`ENTITY_VILLAGER_NO`); `""` disables each, and configs without the keys fall back to these defaults
+- Verified by booting Paper 1.21.8 (the compatibility floor) and Paper 26.2 (Java 25) — clean enable, zero errors on both
+
+---
+
 ## v2.3.1
 - Verified against Minecraft 26.2 (Paper 26.2 build 121, Purpur 26.2), which bundles Adventure 5 — the release that removed previously-deprecated Adventure API
 - Audited every Adventure call site against the Adventure 4 → 5 removal list: no code changes were needed. The plugin already uses only the modern factories (`ClickEvent.runCommand`, `HoverEvent.showText`); the removed surface (`ClickEvent#create(Action, String)`, `ClickEvent#value()`, `BookMeta` as an Adventure `Book`) is not used anywhere in the codebase

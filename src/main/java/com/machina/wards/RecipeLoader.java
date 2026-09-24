@@ -99,6 +99,10 @@ public class RecipeLoader {
     }
 
     public ItemStack createWardItem(String tier, Material mat, String display) {
+        return createWardItem(tierKey, tier, mat, display);
+    }
+
+    static ItemStack createWardItem(NamespacedKey tierKey, String tier, Material mat, String display) {
         ItemStack it = new ItemStack(mat);
         ItemMeta meta = it.getItemMeta();
         if (meta == null) return it;
@@ -107,5 +111,15 @@ public class RecipeLoader {
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
         it.setItemMeta(meta);
         return it;
+    }
+
+    /** Build a shop/ward item for a tier straight from config, with the same defaults registerAll() uses. */
+    static ItemStack wardItem(MachinaWards plugin, String tier) {
+        ConfigurationSection sec = plugin.getConfig().getConfigurationSection("wards." + tier);
+        if (sec == null) return null;
+        Material mat = Material.matchMaterial(sec.getString("result_material", "SEA_LANTERN"));
+        if (mat == null) mat = Material.SEA_LANTERN;
+        String display = sec.getString("display_name", "&aWard Tier");
+        return createWardItem(plugin.tierKey(), tier, mat, display);
     }
 }

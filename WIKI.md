@@ -6,7 +6,7 @@ Physical land claim protection for Paper & Purpur 1.21 through 26.x. Place ward 
 
 ## How It Works
 
-Craft a ward item and place it like any block. The block marks the center of your protected zone. Break or sneak+right-click to pick it back up — the ward item is returned to your inventory so you can relocate it any time.
+Craft a ward item and place it like any block. The block marks the center of your protected zone. Break it, or sneak+right-click it twice, to pick it back up — the ward item is returned to your inventory so you can relocate it any time.
 
 Right-click the ward block to open the management menu.
 
@@ -71,41 +71,44 @@ Trust level enforcement can be disabled server-wide in `config.yml` (`trust_leve
 
 ## Ward Menu
 
-Right-clicking the ward block opens a management GUI. The menu adapts based on who is clicking:
+Right-clicking the ward block opens a management menu titled with the ward's name. A Nether Star header at the top shows the ward's tier, radius, member count, location, and ID. Every button describes what it does, shows its current state where it has one, and tells you what a click will do. The menu adapts based on who is clicking:
 
 **Owner / Admin view** — full management access:
 
 | Item | Action |
 |------|--------|
-| Name Tag — Rename | Set a custom name for this ward |
-| Bell — Toggle Alerts | Turn entry notifications on/off for this ward |
-| Player Head — Manage Members | View and manage all current members and their trust levels |
-| Paper — History | Show the last 20 entry log entries |
-| Spyglass — Show Radius | Draw a purple particle boundary for 10 seconds |
-| Emerald — Add Member | Type a player name in chat to add them (enforces tier member limit) |
+| Name Tag — Rename | Set a custom name for this ward (see Ward names below) |
 | Feather — Entry Message | Set a custom message visitors see on entry. Supports `&` color codes and `&#RRGGBB` hex. Placeholders: `%ward%`, `%owner%`, `%tier%`, `%radius%`. Type `clear` to remove |
-| Allow PVP | Per-ward toggle to allow outsiders to PVP inside this ward |
-| Allow Mob Damage | Per-ward toggle to allow outsiders to damage animals/mobs inside this ward |
-| Nether Star — Ward Intelligence | *(Super Ward only)* Access the feature tracking system |
+| Bell — Entry Alerts | Turn entry notifications on/off for this ward. Glows while on |
+| Player Head — Members | Add and remove members and set their trust levels |
+| Paper — History | Closes the menu and shows the last 20 entry log entries in chat |
+| Spyglass — Show Radius | Draw a purple particle boundary for 10 seconds. Only you can see it; click again to restart it |
+| Iron Sword — Allow PVP | Per-ward toggle to allow outsiders to PVP inside this ward. Glows while on |
+| Bone — Allow Mob Damage | Per-ward toggle to allow outsiders to damage animals/mobs inside this ward. Glows while on |
+| Ender Eye — Ward Intelligence | *(Super Ward only)* Access the feature tracking system |
 
 **Member view** — read-only access:
 
 | Item | Action |
 |------|--------|
-| Paper — History | View the last 20 entry log entries |
-| Spyglass — Show Radius | Visualize the ward boundary |
+| Paper — History | View the last 20 entry log entries in chat |
+| Spyglass — Show Radius | Visualize the ward boundary (only you can see it) |
+
+**Chat prompts** — Rename, Entry Message, and Add Member ask you to type in chat. Type `cancel` to back out; a prompt you ignore expires after 60 seconds. If what you typed is rejected, the prompt stays open so you can try again.
+
+**Ward names** — 1 to 32 characters, no spaces, and unique across the server. Color codes are allowed and kept for display; commands like `/ward tp <name>` match the name without its colors.
 
 ---
 
 ## Member Management
 
-From the **Manage Members** screen, each current member is shown as a player skull. Click a skull to open the **Trust** sub-menu:
+From the **Members** screen, each current member is shown as a player skull. Click **Add Member** and type a player name in chat to add someone (or use `/ward addmember <player>`). The ward's member limit is enforced at time of addition, and the button grays out when the ward is full. Players who are already members, and the ward owner, can't be added again.
 
-- **Set as Visitor** — can interact but not build or break
-- **Set as Member** — full access (default)
-- **Remove from ward** — shift-click to confirm
+Click a skull to open the **Trust** sub-menu. Each level lists what it can and cannot do, and the current one glows:
 
-Use the Add Member button (or `/ward addmember <player>`) to add new members. The ward's member limit is enforced at time of addition.
+- **Visitor** — can interact but not build or break
+- **Member** — full access (default)
+- **Remove Member** — click it twice within the confirm window (`pickup.confirm_ms`, default 5 seconds). No shift-click needed, so it works for Bedrock players too
 
 ---
 
@@ -121,13 +124,13 @@ Super wards include a **Ward Intelligence** menu with five independently togglea
 | Player Death | Logs every player death inside the ward |
 | Explosion Log | Logs all explosions inside the ward |
 
-Each feature has its own sub-menu where you can toggle it on/off, view recent logs (last 20 entries), or clear the log history. All data is persisted to the database and wiped automatically when the ward is destroyed.
+Each feature has its own sub-menu where you can toggle it on/off (it glows while on), view recent logs (last 20 entries, shown in chat), or clear the log history. Clear Logs sits apart from View Logs and takes two clicks within the confirm window, so a stray click can't wipe your history. All data is persisted to the database and wiped automatically when the ward is destroyed.
 
 ---
 
 ## Economy Shop
 
-If Vault is installed with an economy provider (e.g. EssentialsX), players can purchase ward items directly using `/ward shop`. Prices are set per tier in `config.yml`. If a player's inventory is full, purchased items drop at their feet so they are never lost.
+If Vault is installed with an economy provider (e.g. EssentialsX), players can purchase ward items directly using `/ward shop`. Each ward shows its price, member limit, and number of Ward Intelligence features, with a red line if you can't afford it. Each click buys one ward, and bought wards stack with crafted ones of the same tier. Prices are set per tier in `config.yml`. If a player's inventory is full, purchased items drop at their feet so they are never lost.
 
 ---
 
@@ -185,6 +188,9 @@ If Vault is installed with an economy provider (e.g. EssentialsX), players can p
 | `ward_break` | Ward is broken/removed |
 | `ward_pickup` | Ward is picked up via sneak+right-click |
 | `entry_alert` | Visitor enters a ward |
+| `menu_click` | Menu buttons, toggles, and the first click of a two-click confirm |
+| `menu_success` | A menu action completed: purchase, member added or removed, name saved |
+| `menu_error` | A menu action was refused: can't afford, no permission, invalid input |
 
 ---
 
@@ -219,6 +225,9 @@ When a non-member enters a ward they see an action bar notification showing the 
 - Wards cannot be placed overlapping an existing ward
 - Picking up a ward block requires a second sneak+right-click confirmation within a configurable window (default 5 seconds) to prevent accidents
 - Breaking the ward block directly also returns the ward item instead of dropping the raw material
+- Removing a member or clearing Ward Intelligence logs takes two clicks within the same window
+- Ward menus only respond to clicks on the menu's own slots; items in your own inventory can't be dragged into or bought through a menu
+- MachinaWards recognizes its own menus directly rather than by title, so another plugin's menu with the same name is never affected
 
 ---
 
@@ -268,13 +277,13 @@ Everything is configurable in `config.yml`:
 | `alerts` | `actionbar_format` | `&e%player% entered &f%ward%` | Action bar text shown to owner/members |
 | `entry` | `show_warning_to_visitor` | `true` | Show the entry action bar to the visitor |
 | `entry` | `warning_format` | `&c⚠ Entering &f%ward% &c— owned by &f%owner%` | Default visitor warning (overridden per-ward by Entry Message) |
-| `pickup` | `confirm_ms` | `5000` | Confirmation window in ms for sneak+click pickup |
+| `pickup` | `confirm_ms` | `5000` | Confirmation window in ms for sneak+right-click pickup and two-click menu confirms (Remove Member, Clear Logs) |
 | `transfer` | `request_timeout_seconds` | `60` | How long a `/ward transfer` offer stays valid |
 | `protection` | *(see table above)* | `true` | Individual protection category toggles |
 | `trust_levels` | `enabled` | `true` | If `false`, Visitors have full Member access |
 | `members` | `notify_on_add` | `true` | Notify players when they are added to a ward |
 | `members` | `notify_on_remove` | `true` | Notify players when they are removed from a ward |
-| `sounds` | `ward_place` etc. | *(see above)* | Sound effect per event, `""` to disable |
+| `sounds` | `ward_place`, `menu_click` etc. | *(see above)* | Sound effect per event, `""` to disable |
 | `particles` | `enabled` | `true` | Toggle ambient ward particles |
 | `particles` | `type` | `END_ROD` | Bukkit `Particle` enum name |
 | `particles` | `interval_ticks` | `40` | Ticks between each particle pulse |

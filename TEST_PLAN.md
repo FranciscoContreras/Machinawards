@@ -32,7 +32,7 @@
 | B10 | View history (empty) | Open menu → click paper (slot 13) | Chat: "No recent entries." |
 | B11 | View history (with entries) | After non-member enters, open menu → click paper | Lists entries as "name at yyyy-MM-dd HH:mm" |
 | B12 | History max 20 entries | Trigger 25+ entries, view history | Only last 20 shown |
-| B13 | Add member via GUI | Open menu → click emerald (slot 15) → type name in chat | Chat prompts for name, then "Added [name] as member." |
+| B13 | Add member via GUI | Open menu → Members → click Add Member (lime dye, slot 7) → type name in chat | Chat prompts for name, then "Added [name] as member." |
 | B14 | Add unknown player | Menu add member → type nonexistent name | "Unknown player." |
 | B15 | Remove member via GUI | Open menu → click barrier (slot 16) → type member name | "Removed [name] from members." |
 
@@ -155,3 +155,25 @@
 | J3 | Notify state survives | Toggle notify off, restart | Still off |
 | J4 | Logs survive restart | Generate entries, restart | History still shows entries |
 | J5 | Alert cooldown resets | Enter ward, restart, re-enter immediately | Alert fires (cooldown is in-memory, resets on restart) |
+
+## K. Menu hardening
+
+| # | Test | Steps | Expected |
+|---|------|-------|----------|
+| K1 | Bottom-inventory click in shop | Hold 64 Basic Wards, `/ward shop`, click your own stack in your inventory (plain, shift and number-key clicks) | Nothing moves, no charge, no item given |
+| K2 | Drag onto a menu | Open any ward menu, pick up an item in your inventory, drag it across menu slots | Drag refused, menu unchanged |
+| K3 | Double-click in shop | With money for two, double-click a tier | Charged once, one ward given |
+| K4 | Double-click alerts toggle | Double-click the Entry Alerts bell | Alerts flip once; bell shows the new State and glint |
+| K5 | `/reload` with a menu open | Open the Ward Menu, run `reload confirm` from console | Menu closes during disable; after reload no item can be taken from any menu |
+| K6 | Remove member on Bedrock | Through Geyser, open a member's Trust screen, tap Remove Member, tap again within 5s | First tap relabels it "Click again to remove <name>"; second tap removes; Members screen reopens |
+| K7 | Remove member, window expired | Click Remove Member, wait 6s, click once | Not removed; the click re-arms |
+| K8 | Prompt expiry | Click Rename, wait 61s, type `hello` | `hello` goes to public chat; ward name unchanged |
+| K9 | Prompt cancel | Click Add Member, type `cancel` | "Cancelled."; Members screen reopens; nobody added |
+| K10 | Rename validation | Rename to `a b`, to 33 characters, to `&6` alone | Each refused with its own message; the prompt stays open |
+| K11 | Duplicate name refused | Name ward A `Castle`; rename ward B (any owner) to `castle` or `&6CASTLE` | "Another ward is already called ..."; B unchanged |
+| K12 | Rename lookup | Rename to `&6Castle`, run `/ward tp castle`, tab-complete `/ward tp Ca` | Teleports; suggestion shows `Castle` |
+| K13 | Clear Logs confirm | Ward Intelligence → a feature → Clear Logs, again within 5s | First click relabels; second clears; View Logs shows none |
+| K14 | Re-add an existing member | Set a member to Visitor, add them again via the GUI and via `/ward addmember` | "<name> is already a member of this ward."; trust stays Visitor; no notification |
+| K15 | Owner mines own ward | Survival owner left-click-mines the ward block | Block breaks, ward removed, item returned; left-click never opens the menu |
+| K16 | Shop tier removed | Open shop, delete a tier from config, `/ward reload`, click that tier | "That ward is no longer sold."; menu closes; no charge |
+| K17 | Bought ward stacks | Buy a Basic Ward and craft one | Both stack in one slot |

@@ -1,26 +1,23 @@
 package com.machina.wards;
 
-import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
-import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
+import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class SuperWardMenuListener implements Listener {
-
-    private static final String TITLE_FEATURES  = "Ward Intelligence";
-    private static final String TITLE_FEAT_SUB  = "feat:";
 
     private final MachinaWards plugin;
 
@@ -31,19 +28,17 @@ public class SuperWardMenuListener implements Listener {
     // ── Feature list ─────────────────────────────────────────────────────────
 
     public static void openFeatureList(MachinaWards plugin, Player p, Ward w) {
-        Inventory inv = Bukkit.createInventory(p, 54, Msg.c("&5" + TITLE_FEATURES));
+        WardGui g = WardGui.of(WardGui.Kind.FEATURES, w.id());
+        Inventory inv = g.create(36, Msg.c("&5Ward Intelligence"));
 
-        // Border
-        ItemStack pane = pane(plugin);
+        ItemStack pane = pane();
         for (int i = 0; i < 9; i++) inv.setItem(i, pane);
-        for (int i = 45; i < 54; i++) inv.setItem(i, pane);
+        for (int i = 27; i < 36; i++) inv.setItem(i, pane);
 
-        // Ward info (top center)
-        inv.setItem(4, infoItem(plugin, w));
+        inv.setItem(4, WardGui.infoItem(plugin, w));
 
-        // Features available for this tier
         List<String> available = plugin.getConfig().getStringList("wards." + w.tier() + ".features");
-        List<WardFeature> features = java.util.Arrays.stream(WardFeature.values())
+        List<WardFeature> features = Arrays.stream(WardFeature.values())
                 .filter(f -> available.contains(f.id()))
                 .collect(Collectors.toList());
 
@@ -52,51 +47,68 @@ public class SuperWardMenuListener implements Listener {
             inv.setItem(slots[i], featureListItem(plugin, w, features.get(i)));
         }
 
-        // Back button
-        inv.setItem(49, navItem(plugin, w, null, "back_main", "&7\u2190 Back"));
+        inv.setItem(31, WardGui.button(plugin, Material.ARROW, "&7« Back", null, "back_main"));
 
         p.openInventory(inv);
+    }
+
+    private static ItemStack featureListItem(MachinaWards plugin, Ward w, WardFeature f) {
+        boolean on = w.hasFeature(f);
+        ItemStack it = WardGui.button(plugin, f.icon(), f.displayName(),
+                WardGui.lore(WardGui.wrap(f.description(), 30), on ? "&aON" : "&cOFF", "Click to open"),
+                "open_feature");
+        ItemMeta m = it.getItemMeta();
+        WardGui.glint(m, on);
+        m.getPersistentDataContainer().set(plugin.featureKey(), PersistentDataType.STRING, f.id());
+        it.setItemMeta(m);
+        return it;
     }
 
     // ── Feature sub-menu ─────────────────────────────────────────────────────
 
     private static void openFeatureSub(MachinaWards plugin, Player p, Ward w, WardFeature f) {
-        Inventory inv = Bukkit.createInventory(p, 27,
-                Msg.c("&5" + TITLE_FEAT_SUB + f.id()));
+        WardGui g = new WardGui(WardGui.Kind.FEATURE, w.id(), null, f.id(), 0);
+        Inventory inv = g.create(27, Msg.c(f.displayName()));
 
-        // Border
-        ItemStack pane = pane(plugin);
-        for (int i : new int[]{0,1,2,3,4,5,6,7,8,9,17,18,19,20,21,22,23,24,25,26})
+        ItemStack pane = pane();
+        for (int i : new int[]{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26})
             inv.setItem(i, pane);
+
+        inv.setItem(4, WardGui.infoItem(plugin, w));
 
         // Toggle (11)
         boolean on = w.hasFeature(f);
-        ItemStack toggle = new ItemStack(on ? Material.LIME_CONCRETE : Material.RED_CONCRETE);
+        ItemStack toggle = WardGui.button(plugin, f.icon(), f.displayName(),
+                WardGui.lore(WardGui.wrap(f.description(), 30), on ? "&aON" : "&cOFF",
+                        on ? "Click to turn off" : "Click to turn on"),
+                "toggle");
         ItemMeta tm = toggle.getItemMeta();
-        if (tm != null) {
-            tm.setDisplayName(Msg.c(on ? "&aEnabled \u2014 click to disable" : "&cDisabled \u2014 click to enable"));
-            tag(plugin, tm, w.id().toString(), f.id(), "toggle");
-            toggle.setItemMeta(tm);
-        }
+        WardGui.glint(tm, on);
+        toggle.setItemMeta(tm);
         inv.setItem(11, toggle);
 
-        // Feature icon (13)
-        inv.setItem(13, featureListItem(plugin, w, f));
+        // View logs (13)
+        inv.setItem(13, WardGui.button(plugin, Material.WRITABLE_BOOK, "&eView Logs",
+                WardGui.lore(List.of("&7Show the last 20 entries", "&7in chat."), null, "Click to view"),
+                "view_logs"));
 
-        // View logs (14)
-        ItemStack logs = tagged(plugin, new ItemStack(Material.WRITABLE_BOOK),
-                "&fView Logs", List.of(Msg.c("&7Shows last 20 entries")),
-                w.id().toString(), f.id(), "view_logs");
-        inv.setItem(14, logs);
-
-        // Clear logs (15)
-        ItemStack clear = tagged(plugin, new ItemStack(Material.BARRIER),
-                "&cClear Logs", List.of(Msg.c("&7Permanently deletes all log entries")),
-                w.id().toString(), f.id(), "clear_logs");
-        inv.setItem(15, clear);
+        // Clear logs (16)
+        long secs = plugin.getConfig().getLong("pickup.confirm_ms", 5000) / 1000;
+        String k = "clear_logs:" + w.id() + ":" + f.id();
+        ItemStack clear;
+        if (!WardGui.isArmed(plugin, p, k)) {
+            clear = WardGui.button(plugin, Material.BARRIER, "&cClear Logs",
+                    WardGui.lore(List.of("&7Delete every log entry for", "&7this feature. No undo."), null, "Click twice to clear"),
+                    "clear_logs");
+        } else {
+            clear = WardGui.button(plugin, Material.BARRIER, "&cClick again to clear logs",
+                    WardGui.lore(List.of("&7Click again within " + secs + "s.", "&7This can't be undone."), null, null),
+                    "clear_logs");
+        }
+        inv.setItem(16, clear);
 
         // Back (22)
-        inv.setItem(22, navItem(plugin, w, f.id(), "back_features", "&7\u2190 Back"));
+        inv.setItem(22, WardGui.button(plugin, Material.ARROW, "&7« Back", null, "back_features"));
 
         p.openInventory(inv);
     }
@@ -105,164 +117,113 @@ public class SuperWardMenuListener implements Listener {
 
     @EventHandler
     public void onClick(InventoryClickEvent e) {
-        HumanEntity he = e.getWhoClicked();
-        if (!(he instanceof Player p)) return;
-        String title = org.bukkit.ChatColor.stripColor(e.getView().getTitle());
-        if (title == null) return;
+        if (!(e.getView().getTopInventory().getHolder() instanceof WardGui g)) return;   // 1
+        e.setCancelled(true);                                                            // 2
+        if (g.kind != WardGui.Kind.FEATURES && g.kind != WardGui.Kind.FEATURE) return;
+        if (e.getRawSlot() >= e.getView().getTopInventory().getSize()) return;           // 3
+        if (e.getClick() == ClickType.DOUBLE_CLICK) return;                              // 4
+        if (!(e.getWhoClicked() instanceof Player p)) return;
 
-        if (title.equalsIgnoreCase(TITLE_FEATURES)) {
-            handleListClick(e, p);
-        } else if (title.startsWith(TITLE_FEAT_SUB)) {
-            handleSubClick(e, p, title.substring(TITLE_FEAT_SUB.length()));
-        }
-    }
-
-    private void handleListClick(InventoryClickEvent e, Player p) {
-        e.setCancelled(true);
-        ItemStack it = e.getCurrentItem();
-        if (it == null || !it.hasItemMeta()) return;
-        ItemMeta meta = it.getItemMeta();
-
-        String wardIdStr = meta.getPersistentDataContainer().get(plugin.tierKey(), PersistentDataType.STRING);
-        String action    = meta.getPersistentDataContainer().get(plugin.actionKey(), PersistentDataType.STRING);
-        String featureId = meta.getPersistentDataContainer().get(plugin.featureKey(), PersistentDataType.STRING);
-
-        if (wardIdStr == null) return;
-        Ward w = plugin.manager().get(UUID.fromString(wardIdStr));
-        if (w == null) { p.closeInventory(); return; }
-
-        if ("back_main".equals(action)) {
-            p.closeInventory();
-            Bukkit.getScheduler().runTask(plugin, () -> WardMenuListener.openMain(plugin, p, w));
+        Ward w = plugin.manager().get(g.wardId);                                         // 5
+        if (w == null) {
+            p.sendMessage(Msg.c("&cThat ward no longer exists."));
+            WardGui.sound(plugin, p, "menu_error");
+            Bukkit.getScheduler().runTask(plugin, p::closeInventory);
             return;
         }
 
-        // Feature item clicked → open sub-menu
-        if (featureId != null) {
+        ItemStack it = e.getCurrentItem();
+        if (it == null || !it.hasItemMeta()) return;
+        String action = it.getItemMeta().getPersistentDataContainer().get(plugin.actionKey(), PersistentDataType.STRING);
+        if (action == null) return;
+
+        if (!WardGui.canManage(p, w)) {
+            p.sendMessage(Msg.c("&cOnly the ward owner can do that."));
+            WardGui.sound(plugin, p, "menu_error");
+            Bukkit.getScheduler().runTask(plugin, p::closeInventory);
+            return;
+        }
+
+        if (g.kind == WardGui.Kind.FEATURES) {
+            handleListClick(p, w, it, action);
+        } else {
+            handleSubClick(p, w, g, action);
+        }
+    }
+
+    private void handleListClick(Player p, Ward w, ItemStack it, String action) {
+        if ("back_main".equals(action)) {
+            WardGui.sound(plugin, p, "menu_click");
+            Bukkit.getScheduler().runTask(plugin, () -> WardMenuListener.openMain(plugin, p, w));
+            return;
+        }
+        if ("open_feature".equals(action)) {
+            String featureId = it.getItemMeta().getPersistentDataContainer().get(plugin.featureKey(), PersistentDataType.STRING);
+            if (featureId == null) return;
             WardFeature.fromId(featureId).ifPresent(f -> {
-                p.closeInventory();
+                WardGui.sound(plugin, p, "menu_click");
                 Bukkit.getScheduler().runTask(plugin, () -> openFeatureSub(plugin, p, w, f));
             });
         }
     }
 
-    private void handleSubClick(InventoryClickEvent e, Player p, String featureIdInTitle) {
-        e.setCancelled(true);
-        ItemStack it = e.getCurrentItem();
-        if (it == null || !it.hasItemMeta()) return;
-        ItemMeta meta = it.getItemMeta();
-
-        String wardIdStr = meta.getPersistentDataContainer().get(plugin.tierKey(), PersistentDataType.STRING);
-        String featureId = meta.getPersistentDataContainer().get(plugin.featureKey(), PersistentDataType.STRING);
-        String action    = meta.getPersistentDataContainer().get(plugin.actionKey(), PersistentDataType.STRING);
-
-        if (wardIdStr == null || action == null) return;
-        Ward w = plugin.manager().get(UUID.fromString(wardIdStr));
-        if (w == null) { p.closeInventory(); return; }
-
-        if ("back_features".equals(action)) {
-            p.closeInventory();
-            Bukkit.getScheduler().runTask(plugin, () -> openFeatureList(plugin, p, w));
+    private void handleSubClick(Player p, Ward w, WardGui g, String action) {
+        WardFeature f = WardFeature.fromId(g.featureId).orElse(null);
+        if (f == null) {
+            Bukkit.getScheduler().runTask(plugin, p::closeInventory);
             return;
         }
 
-        String fid = featureId != null ? featureId : featureIdInTitle;
-        WardFeature.fromId(fid).ifPresent(f -> {
-            switch (action) {
-                case "toggle" -> {
-                    boolean now = !w.hasFeature(f);
-                    plugin.manager().setFeature(w.id(), f, now);
-                    p.sendMessage(Msg.c("&5" + org.bukkit.ChatColor.stripColor(Msg.c(f.displayName()))
-                            + ": " + (now ? "&aON" : "&cOFF")));
-                    Bukkit.getScheduler().runTask(plugin, () -> openFeatureSub(plugin, p, w, f));
-                }
-                case "view_logs" -> {
-                    List<String> logs = plugin.manager().getFeatureLogs(w.id(), f, 20);
-                    p.closeInventory();
+        switch (action) {
+            case "back_features" -> {
+                WardGui.sound(plugin, p, "menu_click");
+                Bukkit.getScheduler().runTask(plugin, () -> openFeatureList(plugin, p, w));
+            }
+            case "toggle" -> {
+                plugin.manager().setFeature(w.id(), f, !w.hasFeature(f));
+                WardGui.sound(plugin, p, "menu_click");
+                Bukkit.getScheduler().runTask(plugin, () -> openFeatureSub(plugin, p, w, f));
+            }
+            case "view_logs" -> {
+                WardGui.sound(plugin, p, "menu_click");
+                Bukkit.getScheduler().runTask(plugin, p::closeInventory);
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    List<String> logs;
+                    try {
+                        logs = plugin.manager().getFeatureLogs(w.id(), f, 20);
+                    } catch (RuntimeException ex) {
+                        plugin.getLogger().warning("Could not read feature logs: " + ex.getMessage());
+                        p.sendMessage(Msg.c("&cCouldn't load the logs right now."));
+                        return;
+                    }
+                    String name = ChatColor.stripColor(Msg.c(f.displayName()));
                     if (logs.isEmpty()) {
-                        p.sendMessage(Msg.c("&7No logs for &5" + org.bukkit.ChatColor.stripColor(Msg.c(f.displayName())) + "&7."));
+                        p.sendMessage(Msg.c("&7No logs for &5" + name + "&7."));
                     } else {
-                        p.sendMessage(Msg.c("&5--- " + org.bukkit.ChatColor.stripColor(Msg.c(f.displayName())) + " Logs ---"));
+                        p.sendMessage(Msg.c("&5--- " + name + " Logs ---"));
                         logs.forEach(line -> p.sendMessage(Msg.c("&7" + line)));
                     }
-                }
-                case "clear_logs" -> {
-                    plugin.manager().clearFeatureLogs(w.id(), f);
-                    p.sendMessage(Msg.c("&aCleared &5" + org.bukkit.ChatColor.stripColor(Msg.c(f.displayName())) + "&a logs."));
-                    Bukkit.getScheduler().runTask(plugin, () -> openFeatureSub(plugin, p, w, f));
-                }
+                });
             }
-        });
+            case "clear_logs" -> {
+                String k = "clear_logs:" + w.id() + ":" + f.id();
+                if (!WardGui.confirm(plugin, p, k)) {
+                    WardGui.sound(plugin, p, "menu_click");
+                    Bukkit.getScheduler().runTask(plugin, () -> openFeatureSub(plugin, p, w, f));
+                    return;
+                }
+                plugin.manager().clearFeatureLogs(w.id(), f);
+                p.sendMessage(Msg.c("&aCleared &5" + ChatColor.stripColor(Msg.c(f.displayName())) + "&a logs."));
+                WardGui.sound(plugin, p, "menu_success");
+                Bukkit.getScheduler().runTask(plugin, () -> openFeatureSub(plugin, p, w, f));
+            }
+            default -> { }
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private static ItemStack infoItem(MachinaWards plugin, Ward w) {
-        ItemStack it = new ItemStack(Material.NETHER_STAR);
-        ItemMeta m = it.getItemMeta();
-        if (m == null) return it;
-        String tierName = plugin.getConfig().getString("wards." + w.tier() + ".display_name", w.tier());
-        m.setDisplayName(Msg.c("&5&l" + org.bukkit.ChatColor.stripColor(Msg.c(tierName))));
-        m.setLore(List.of(
-                Msg.c("&7ID: &f" + w.shortId()),
-                Msg.c("&7Radius: &f" + w.radius()),
-                Msg.c("&7World: &f" + w.world()),
-                Msg.c("&7Location: &f" + w.bx() + ", " + w.by() + ", " + w.bz())
-        ));
-        m.getPersistentDataContainer().set(plugin.tierKey(), PersistentDataType.STRING, w.id().toString());
-        it.setItemMeta(m);
-        return it;
-    }
-
-    private static ItemStack featureListItem(MachinaWards plugin, Ward w, WardFeature f) {
-        ItemStack it = new ItemStack(f.icon());
-        ItemMeta m = it.getItemMeta();
-        if (m == null) return it;
-        boolean on = w.hasFeature(f);
-        m.setDisplayName(Msg.c(f.displayName()));
-        m.setLore(List.of(
-                Msg.c(f.description()),
-                Msg.c(""),
-                Msg.c(on ? "&a\u25cf Enabled" : "&c\u25cf Disabled"),
-                Msg.c("&7Click to configure")
-        ));
-        m.getPersistentDataContainer().set(plugin.tierKey(),   PersistentDataType.STRING, w.id().toString());
-        m.getPersistentDataContainer().set(plugin.featureKey(), PersistentDataType.STRING, f.id());
-        it.setItemMeta(m);
-        return it;
-    }
-
-    private static ItemStack navItem(MachinaWards plugin, Ward w, String featureId, String action, String name) {
-        ItemStack it = new ItemStack(Material.ARROW);
-        ItemMeta m = it.getItemMeta();
-        if (m == null) return it;
-        m.setDisplayName(Msg.c(name));
-        m.getPersistentDataContainer().set(plugin.tierKey(),   PersistentDataType.STRING, w.id().toString());
-        m.getPersistentDataContainer().set(plugin.actionKey(), PersistentDataType.STRING, action);
-        if (featureId != null)
-            m.getPersistentDataContainer().set(plugin.featureKey(), PersistentDataType.STRING, featureId);
-        it.setItemMeta(m);
-        return it;
-    }
-
-    private static ItemStack tagged(MachinaWards plugin, ItemStack it, String name, List<String> lore,
-                                    String wardId, String featureId, String action) {
-        ItemMeta m = it.getItemMeta();
-        if (m == null) return it;
-        m.setDisplayName(Msg.c(name));
-        m.setLore(lore);
-        tag(plugin, m, wardId, featureId, action);
-        it.setItemMeta(m);
-        return it;
-    }
-
-    private static void tag(MachinaWards plugin, ItemMeta m, String wardId, String featureId, String action) {
-        m.getPersistentDataContainer().set(plugin.tierKey(),    PersistentDataType.STRING, wardId);
-        m.getPersistentDataContainer().set(plugin.featureKey(), PersistentDataType.STRING, featureId);
-        m.getPersistentDataContainer().set(plugin.actionKey(),  PersistentDataType.STRING, action);
-    }
-
-    private static ItemStack pane(MachinaWards plugin) {
+    private static ItemStack pane() {
         ItemStack it = new ItemStack(Material.PURPLE_STAINED_GLASS_PANE);
         ItemMeta m = it.getItemMeta();
         if (m != null) { m.setDisplayName(" "); it.setItemMeta(m); }

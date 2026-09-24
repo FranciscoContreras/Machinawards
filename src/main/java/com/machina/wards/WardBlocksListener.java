@@ -13,6 +13,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -132,6 +133,7 @@ public class WardBlocksListener implements Listener {
     public void onInteract(PlayerInteractEvent e) {
         if (e.getClickedBlock() == null) return;
         if (e.getHand() != EquipmentSlot.HAND) return;
+        if (e.getAction() != Action.RIGHT_CLICK_BLOCK) return;
 
         Location loc = e.getClickedBlock().getLocation();
         if (loc.getWorld() == null) return;
@@ -160,7 +162,7 @@ public class WardBlocksListener implements Listener {
                 pendingPickup.put(pid, w.id());
                 pendingPickupTime.put(pid, System.currentTimeMillis());
                 String wardLabel = w.name().isEmpty() ? w.shortId() : w.name();
-                p.sendMessage(Msg.c("&eSneak+click again within &f" + (confirmMs / 1000) + "s &eto pick up &f" + wardLabel + "&e."));
+                p.sendMessage(Msg.c("&eSneak+right-click again within &f" + (confirmMs / 1000) + "s &eto pick up &f" + wardLabel + "&e."));
             }
         } else if (!p.isSneaking()) {
             WardMenuListener.openMain(plugin, p, w);

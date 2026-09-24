@@ -82,7 +82,7 @@ public class WardCommand implements CommandExecutor {
         if (args[0].equalsIgnoreCase("shop")) {
             if (!(sender instanceof Player p)) { sender.sendMessage(Msg.c("&cPlayers only.")); return true; }
             if (plugin.economy() == null) { sender.sendMessage(Msg.c("&cShop disabled.")); return true; }
-            new ShopMenuListener(plugin, manager, plugin.tierKey(), plugin.economy()).open(p);
+            ShopMenuListener.open(plugin, p);
             return true;
         }
 
@@ -539,19 +539,31 @@ public class WardCommand implements CommandExecutor {
             if (!near.owner().equals(p.getUniqueId()) && !p.hasPermission("wards.admin")) {
                 p.sendMessage(Msg.c("&cOnly owner or admin.")); return true;
             }
-            int max = manager.maxMembers(near);
-            if (max >= 0 && near.members().size() >= max) {
-                p.sendMessage(Msg.c("&cThis ward has reached its member limit (" + max + ")."));
-                return true;
-            }
             String targetName = args[1];
             OfflinePlayer addOp = Msg.resolveOfflinePlayer(targetName);
             if (addOp == null || addOp.getUniqueId() == null) {
                 p.sendMessage(Msg.c("&cPlayer not found (must have joined this server): " + targetName));
                 return true;
             }
-            manager.addMember(near.id(), addOp.getUniqueId());
-            p.sendMessage(Msg.c("&aAdded &f" + (addOp.getName() != null ? addOp.getName() : targetName) + "&a to members."));
+            String shown = addOp.getName() != null ? addOp.getName() : targetName;
+            if (addOp.getUniqueId().equals(near.owner())) {
+                p.sendMessage(Msg.c("&cThat player owns this ward."));
+                return true;
+            }
+            if (near.members().contains(addOp.getUniqueId())) {
+                p.sendMessage(Msg.c("&c" + shown + " is already a member of this ward."));
+                return true;
+            }
+            int max = manager.maxMembers(near);
+            if (max >= 0 && near.members().size() >= max) {
+                p.sendMessage(Msg.c("&cThis ward has reached its member limit (" + max + ")."));
+                return true;
+            }
+            if (!manager.addMember(near.id(), addOp.getUniqueId())) {
+                p.sendMessage(Msg.c("&c" + shown + " is already a member of this ward."));
+                return true;
+            }
+            p.sendMessage(Msg.c("&aAdded &f" + shown + "&a to members."));
             return true;
         }
 

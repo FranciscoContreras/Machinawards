@@ -66,6 +66,9 @@ sounds:
   ward_break: BLOCK_BEACON_DEACTIVATE
   ward_pickup: ITEM_BUNDLE_REMOVE_ONE
   entry_alert: BLOCK_NOTE_BLOCK_BELL
+  menu_click: UI_BUTTON_CLICK                # menu navigation, toggles, and the first click of a confirm ("" to disable)
+  menu_success: ENTITY_EXPERIENCE_ORB_PICKUP # a menu action completed: purchase, member added or removed, rename saved ("" to disable)
+  menu_error: ENTITY_VILLAGER_NO             # a menu action was refused: can't afford, no permission, invalid input ("" to disable)
 
 particles:
   enabled: true
