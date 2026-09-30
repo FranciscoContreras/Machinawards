@@ -177,3 +177,18 @@
 | K15 | Owner mines own ward | Survival owner left-click-mines the ward block | Block breaks, ward removed, item returned; left-click never opens the menu |
 | K16 | Shop tier removed | Open shop, delete a tier from config, `/ward reload`, click that tier | "That ward is no longer sold."; menu closes; no charge |
 | K17 | Bought ward stacks | Buy a Basic Ward and craft one | Both stack in one slot |
+
+## L. Liquids and pistons (v2.4.1)
+
+| # | Test | Steps | Expected |
+|---|------|-------|----------|
+| L1 | Water flows inside own ward | Member empties a water bucket on flat ground inside their ward | Water spreads normally (up to 7 blocks) |
+| L2 | Lava flows inside own ward | Same with lava | Lava spreads normally |
+| L3 | Outside flow stops at the edge | Pour water outside, 2 blocks from the ward edge, on flat ground | Water spreads up to the edge; no water on the ward side |
+| L4 | Headless check | Console: glass box in the sky above a ward, `setblock` water inside it, wait 4 s, `execute if block <x+1> <y> <z> minecraft:water` | Test passed (was Test failed on v2.4.0 and earlier) |
+| L5 | Non-member bucket still blocked | Non-member tries to empty a water bucket inside the ward | Cancelled (`bucket_pour`) |
+| L6 | Dispenser outside, facing in | Dispenser 1 block outside the edge, facing the ward, loaded with a water bucket, powered | Nothing placed; bucket stays in the dispenser |
+| L7 | Dispenser inside own ward | Same dispenser placed inside the ward, facing inward | Water placed and flows |
+| L8 | Piston door inside own ward | Build a sticky-piston door fully inside the ward, toggle it | Opens and closes |
+| L9 | Piston outside pushing in | Piston outside the edge facing a warded block, power it | Does not extend |
+| L10 | Neighbouring owners | Two wards of different owners side by side; water in ward A near the shared edge | Stops at A's edge |

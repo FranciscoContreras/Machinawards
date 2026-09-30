@@ -5,6 +5,14 @@ Listing links: source → https://github.com/FranciscoContreras/Machinawards, is
 
 ## Changelog
 
+### v2.4.1 — Liquids and Pistons Inside Your Ward
+- **Water and lava flow inside your own ward.** Every flow into a warded block used to be cancelled, so a bucket of water poured inside your own ward sat there as one still block. Liquid placed by the owner or a member now spreads normally inside the ward. Flow from outside the ward, or from another owner's ward, still stops at the edge.
+- **Pistons work inside your own ward.** A piston standing in a ward pushes and pulls blocks within it, and out of it into unclaimed land, so piston doors and farms work for the people who built them. A piston outside the ward, or in another owner's ward, still cannot move, push into or pull from warded blocks.
+- **Dispensers can't pour in from outside.** Now that liquid spreads inside a ward, a dispenser outside a ward can no longer place or scoop water, lava, powder snow or a mob bucket on the ward's side. This sits under the existing `protection.fluid_flow` switch.
+- **Your wards count as one claim.** Two wards with the same owner are treated as one claim for liquids and pistons, so a build that spans both behaves as one.
+- **No config, data or command changes.** Your wards, members, database and config carry over. Drop the new jar in and restart.
+- **Boot-verified at both ends of the range:** Paper 1.21.8 (the compatibility floor) and Paper 26.2 (Java 25), each a clean enable with zero plugin errors.
+
 ### v2.4.0 — Hardened Menus
 - **Fixed a ward duplication exploit in the shop.** With `/ward shop` open, clicking a stack of ward items in your own inventory was treated as buying that item, and the shop handed back a copy of the whole stack for one price. Ward items stack, so the stack doubled each time. The shop now only accepts clicks on its own slots, every purchase gives exactly one freshly made ward, and the ward is only handed over once the economy confirms the payment went through. Servers running the shop should update.
 - **Clearer ward block controls.** Left-click mines the ward block like any other block (owners can break their own ward in survival), right-click opens the menu, and pickup is sneak+right-click twice. The pickup prompt now says exactly that.

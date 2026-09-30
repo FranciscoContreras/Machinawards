@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.4.1
+- Fixed liquids inside a ward: water and lava placed by the owner or a member now flow normally inside their own ward. Before, every flow into a warded block was cancelled, so a bucket of water inside your own ward stayed a single still block. Flow from outside a ward into it, or from one owner's ward into another's, is still stopped at the edge
+- Fixed pistons inside a ward: a piston standing in a ward now pushes and pulls blocks within that ward (and out of it into unclaimed land), so piston doors and farms work for the people who built them. A piston outside the ward, or in another owner's ward, still cannot move, push into or pull from warded blocks
+- New dispenser guard under `protection.fluid_flow`: a dispenser outside a ward can no longer pour or scoop liquid (water, lava, powder snow and mob buckets, or an empty bucket) on the ward's side of its face. Before this release the liquid could not spread, so it did not matter; now it would
+- Two wards with the same owner count as one claim for liquids and pistons
+- No config, data or command changes; existing wards, members and settings carry over
+
+---
 ## v2.4.0
 - Fixed a ward duplication exploit in the shop: with the shop open, a click on a stack of ward items in the player's own inventory was handled as a purchase of the clicked item, and the whole clicked stack was cloned back for one price (ward items stack, so the stack doubled each time). The shop now only handles clicks on its own slots, hands out one ward built fresh by `RecipeLoader.wardItem` per purchase, and checks `EconomyResponse.transactionSuccess()` before giving it
 - Menus are identified by a `WardGui` `InventoryHolder` (kind, ward id, member, feature, page) instead of by title text. Every click in a MachinaWards menu is cancelled, only top-inventory slots act, double-clicks are ignored, and drags onto menu slots are refused. Another plugin's menu with the same title is no longer affected

@@ -2,6 +2,7 @@ package com.machina.wards;
 
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.data.Directional;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
@@ -192,17 +193,26 @@ public class ProtectionListener implements Listener {
 
     // ── Pistons ───────────────────────────────────────────────────────────────
 
+    private boolean sameClaim(Ward a, Ward b) {
+        return a != null && b != null && (a.id().equals(b.id()) || a.owner().equals(b.owner()));
+    }
+
+    private boolean foreign(Ward base, Block b) {
+        Ward w = manager.findAt(b.getLocation());
+        return w != null && !sameClaim(base, w);
+    }
+
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onPistonExtend(BlockPistonExtendEvent e) {
         if (!plugin.getConfig().getBoolean("protection.piston", true)) return;
+        Ward base = manager.findAt(e.getBlock().getLocation());
         for (Block b : e.getBlocks()) {
-            if (manager.findAt(b.getLocation()) != null ||
-                manager.findAt(b.getRelative(e.getDirection()).getLocation()) != null) {
+            if (foreign(base, b) || foreign(base, b.getRelative(e.getDirection()))) {
                 e.setCancelled(true);
                 return;
             }
         }
-        if (manager.findAt(e.getBlock().getRelative(e.getDirection()).getLocation()) != null) {
+        if (foreign(base, e.getBlock().getRelative(e.getDirection()))) {
             e.setCancelled(true);
         }
     }
@@ -211,9 +221,9 @@ public class ProtectionListener implements Listener {
     public void onPistonRetract(BlockPistonRetractEvent e) {
         if (!plugin.getConfig().getBoolean("protection.piston", true)) return;
         if (!e.isSticky()) return;
+        Ward base = manager.findAt(e.getBlock().getLocation());
         for (Block b : e.getBlocks()) {
-            if (manager.findAt(b.getLocation()) != null ||
-                manager.findAt(b.getRelative(e.getDirection()).getLocation()) != null) {
+            if (foreign(base, b) || foreign(base, b.getRelative(e.getDirection()))) {
                 e.setCancelled(true);
                 return;
             }
@@ -234,7 +244,24 @@ public class ProtectionListener implements Listener {
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onFluidFlow(BlockFromToEvent e) {
         if (!plugin.getConfig().getBoolean("protection.fluid_flow", true)) return;
-        if (manager.findAt(e.getToBlock().getLocation()) != null) e.setCancelled(true);
+        Ward to = manager.findAt(e.getToBlock().getLocation());
+        if (to == null) return;
+        Ward from = manager.findAt(e.getBlock().getLocation());
+        if (!sameClaim(from, to)) e.setCancelled(true);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onDispenseLiquid(BlockDispenseEvent e) {
+        if (!plugin.getConfig().getBoolean("protection.fluid_flow", true)) return;
+        if (e.getBlock().getType() != Material.DISPENSER) return;
+        Material item = e.getItem().getType();
+        if (item == Material.MILK_BUCKET) return;
+        if (item != Material.BUCKET && !item.name().endsWith("_BUCKET")) return;
+        if (!(e.getBlock().getBlockData() instanceof Directional d)) return;
+        Ward to = manager.findAt(e.getBlock().getRelative(d.getFacing()).getLocation());
+        if (to == null) return;
+        Ward from = manager.findAt(e.getBlock().getLocation());
+        if (!sameClaim(from, to)) e.setCancelled(true);
     }
 
     // ── Hanging entities ──────────────────────────────────────────────────────

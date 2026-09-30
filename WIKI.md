@@ -35,9 +35,9 @@ Inside a ward the following are blocked for non-members (all individually toggle
 | Block interaction | `interact` | Buttons, chests, doors, etc. VISITOR trust members can still interact — see Trust Levels |
 | Explosions | `explosion` | Creeper, TNT, etc. |
 | Fire spread | `fire` | |
-| Piston push/pull | `piston` | Blocks cannot be pushed or pulled across ward boundaries |
+| Piston push/pull | `piston` | A piston outside the ward (or in another owner's ward) cannot move warded blocks. Pistons inside your own ward work normally |
 | Entity grief | `entity_grief` | Endermen, silverfish, Wither, Ravagers, and other griefing mobs cannot alter blocks |
-| Fluid flow | `fluid_flow` | Lava and water cannot flow into a ward from outside |
+| Fluid flow | `fluid_flow` | Lava and water cannot flow into a ward from outside, and a dispenser outside cannot pour or scoop liquid inside. Liquid placed inside your own ward flows normally |
 | Hanging entities | `hanging` | Item frames and paintings are protected from non-members |
 | PVP | `pvp` | Outsiders cannot attack players inside. Per-ward override: **Allow PVP** flag |
 | Entity damage | `entity_damage` | Outsiders cannot damage animals or mobs inside. Per-ward override: **Allow Mob Damage** flag |
