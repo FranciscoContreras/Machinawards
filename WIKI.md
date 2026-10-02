@@ -82,7 +82,7 @@ Right-clicking the ward block opens a management menu titled with the ward's nam
 | Bell — Entry Alerts | Turn entry notifications on/off for this ward. Glows while on |
 | Player Head — Members | Add and remove members and set their trust levels |
 | Paper — History | Closes the menu and shows the last 20 entry log entries in chat |
-| Spyglass — Show Radius | Draw a purple particle boundary for 10 seconds. Only you can see it; click again to restart it |
+| Spyglass — Show Radius | Draw a purple particle boundary for 10 seconds (`radius_display.duration_seconds`). Only you can see it; click again to restart it |
 | Iron Sword — Allow PVP | Per-ward toggle to allow outsiders to PVP inside this ward. Glows while on |
 | Bone — Allow Mob Damage | Per-ward toggle to allow outsiders to damage animals/mobs inside this ward. Glows while on |
 | Ender Eye — Ward Intelligence | *(Super Ward only)* Access the feature tracking system |
@@ -178,7 +178,7 @@ If Vault is installed with an economy provider (e.g. EssentialsX), players can p
 - **Ambient** — a subtle `END_ROD` effect floats above each ward block so you always know where your wards are (configurable type and interval)
 - **Placement burst** — confirms a new ward was created
 - **Deletion burst** — fires when a ward is broken or picked up
-- **Radius preview** — purple particle square shows your claim boundary for 10 seconds via the Show Radius button
+- **Radius preview** — purple particle square shows your claim boundary for 10 seconds (configurable) via the Show Radius button
 
 **Sounds** (all configurable in `config.yml` → `sounds:`, set to `""` to disable individually)
 
@@ -277,6 +277,7 @@ Everything is configurable in `config.yml`:
 | `alerts` | `actionbar_format` | `&e%player% entered &f%ward%` | Action bar text shown to owner/members |
 | `entry` | `show_warning_to_visitor` | `true` | Show the entry action bar to the visitor |
 | `entry` | `warning_format` | `&c⚠ Entering &f%ward% &c— owned by &f%owner%` | Default visitor warning (overridden per-ward by Entry Message) |
+| `radius_display` | `duration_seconds` | `10` | How long the Show Radius button draws the ward boundary, in seconds (1 to 600) |
 | `pickup` | `confirm_ms` | `5000` | Confirmation window in ms for sneak+right-click pickup and two-click menu confirms (Remove Member, Clear Logs) |
 | `transfer` | `request_timeout_seconds` | `60` | How long a `/ward transfer` offer stays valid |
 | `protection` | *(see table above)* | `true` | Individual protection category toggles |

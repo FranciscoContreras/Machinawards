@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.4.2
+- New config key `radius_display.duration_seconds` (default `10`, the old fixed value): how long the Show Radius button draws the ward boundary. Values outside 1 to 600 are clamped. The menu lore and the chat line show the configured time, and `/ward reload` applies a change
+- An existing `config.yml` without the key keeps the 10-second outline; no data or command changes
+
+---
 ## v2.4.1
 - Fixed liquids inside a ward: water and lava placed by the owner or a member now flow normally inside their own ward. Before, every flow into a warded block was cancelled, so a bucket of water inside your own ward stayed a single still block. Flow from outside a ward into it, or from one owner's ward into another's, is still stopped at the edge
 - Fixed pistons inside a ward: a piston standing in a ward now pushes and pulls blocks within that ward (and out of it into unclaimed land), so piston doors and farms work for the people who built them. A piston outside the ward, or in another owner's ward, still cannot move, push into or pull from warded blocks

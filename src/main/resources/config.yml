@@ -70,6 +70,9 @@ sounds:
   menu_success: ENTITY_EXPERIENCE_ORB_PICKUP # a menu action completed: purchase, member added or removed, rename saved ("" to disable)
   menu_error: ENTITY_VILLAGER_NO             # a menu action was refused: can't afford, no permission, invalid input ("" to disable)
 
+radius_display:
+  duration_seconds: 10   # how long the Show Radius button draws the ward boundary (1 to 600; /ward reload applies it)
+
 particles:
   enabled: true
   type: END_ROD

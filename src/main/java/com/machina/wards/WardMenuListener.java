@@ -86,7 +86,7 @@ public class WardMenuListener implements Listener {
                     WardGui.lore(List.of("&7Show the last 20 entries", "&7in chat."), null, "Click to view"),
                     "history"));
             inv.setItem(16, WardGui.button(plugin, Material.SPYGLASS, "&eShow Radius",
-                    WardGui.lore(List.of("&7Outline the protected area", "&7for 10 seconds."), null, "Click to show"),
+                    WardGui.lore(List.of("&7Outline the protected area", "&7for " + radiusDisplaySeconds(plugin) + " seconds."), null, "Click to show"),
                     "show_radius"));
 
             inv.setItem(20, flagToggle(plugin, w, WardFlag.ALLOW_PVP));
@@ -102,7 +102,7 @@ public class WardMenuListener implements Listener {
                     WardGui.lore(List.of("&7Show the last 20 entries", "&7in chat."), null, "Click to view"),
                     "history"));
             inv.setItem(14, WardGui.button(plugin, Material.SPYGLASS, "&eShow Radius",
-                    WardGui.lore(List.of("&7Outline the protected area", "&7for 10 seconds."), null, "Click to show"),
+                    WardGui.lore(List.of("&7Outline the protected area", "&7for " + radiusDisplaySeconds(plugin) + " seconds."), null, "Click to show"),
                     "show_radius"));
         }
 
@@ -383,8 +383,9 @@ public class WardMenuListener implements Listener {
             case "set_entry_message" -> startPrompt(p, w, PromptKind.ENTRY_MESSAGE, WardGui.Kind.MAIN);
             case "show_radius" -> {
                 Bukkit.getScheduler().runTask(plugin, p::closeInventory);
-                p.sendMessage(Msg.c("&dShowing ward boundary for &f10 &dseconds."));
-                startRadiusTask(p, w);
+                int secs = radiusDisplaySeconds(plugin);
+                p.sendMessage(Msg.c("&dShowing ward boundary for &f" + secs + " &dseconds."));
+                startRadiusTask(p, w, secs * 20);
             }
             case "features" -> {
                 WardGui.sound(plugin, p, "menu_click");
@@ -479,7 +480,13 @@ public class WardMenuListener implements Listener {
 
     // ── Radius visualizer ────────────────────────────────────────────────────
 
-    private void startRadiusTask(Player p, Ward w) {
+    /** How long Show Radius draws the boundary, from {@code radius_display.duration_seconds} (default 10, clamped to 1..600). */
+    static int radiusDisplaySeconds(MachinaWards plugin) {
+        long secs = plugin.getConfig().getLong("radius_display.duration_seconds", 10);
+        return (int) Math.max(1, Math.min(600, secs));
+    }
+
+    private void startRadiusTask(Player p, Ward w, int durationTicks) {
         UUID uid = p.getUniqueId();
         BukkitTask prev = radiusTasks.remove(uid);
         if (prev != null) prev.cancel();
@@ -488,7 +495,7 @@ public class WardMenuListener implements Listener {
         BukkitRunnable r = new BukkitRunnable() {
             int elapsed = 0;
             @Override public void run() {
-                if (elapsed >= 200 || !p.isOnline()) {
+                if (elapsed >= durationTicks || !p.isOnline()) {
                     cancel();
                     radiusTasks.remove(uid, holder[0]);
                     return;

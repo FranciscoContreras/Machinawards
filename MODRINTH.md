@@ -5,6 +5,10 @@ Listing links: source → https://github.com/FranciscoContreras/Machinawards, is
 
 ## Changelog
 
+### v2.4.2 — Configurable Radius Preview
+- New `radius_display.duration_seconds` in `config.yml` (default 10, 1 to 600): how long Show Radius outlines the ward. The menu and the chat line show the configured time; `/ward reload` applies it
+- Existing configs without the key keep the 10-second outline
+
 ### v2.4.1 — Liquids and Pistons Inside Your Ward
 - **Water and lava flow inside your own ward.** Every flow into a warded block used to be cancelled, so a bucket of water poured inside your own ward sat there as one still block. Liquid placed by the owner or a member now spreads normally inside the ward. Flow from outside the ward, or from another owner's ward, still stops at the edge.
 - **Pistons work inside your own ward.** A piston standing in a ward pushes and pulls blocks within it, and out of it into unclaimed land, so piston doors and farms work for the people who built them. A piston outside the ward, or in another owner's ward, still cannot move, push into or pull from warded blocks.
