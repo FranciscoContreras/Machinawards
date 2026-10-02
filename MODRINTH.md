@@ -6,8 +6,10 @@ Listing links: source → https://github.com/FranciscoContreras/Machinawards, is
 ## Changelog
 
 ### v2.4.2 — Configurable Radius Preview
-- New `radius_display.duration_seconds` in `config.yml` (default 10, 1 to 600): how long Show Radius outlines the ward. The menu and the chat line show the configured time; `/ward reload` applies it
-- Existing configs without the key keep the 10-second outline
+- **Choose how long Show Radius lasts.** The Show Radius button outlines a ward's boundary with particles, and that outline used to disappear after a fixed 10 seconds. Set `radius_display.duration_seconds` in `config.yml` to keep it up for anywhere from 1 to 600 seconds; a value outside that range is clamped to it.
+- **No restart needed.** The time is read on every click, so `/ward reload` applies a new value at once. The button's description and the chat message both show the time you set.
+- **Nothing to migrate.** A `config.yml` without the new key keeps the 10-second outline. Wards, members, the database and commands are unchanged. Drop the new jar in and restart.
+- **Boot-verified at both ends of the range:** Paper 1.21.8 (the compatibility floor) and Paper 26.2 (Java 25), each a clean enable with zero plugin errors.
 
 ### v2.4.1 — Liquids and Pistons Inside Your Ward
 - **Water and lava flow inside your own ward.** Every flow into a warded block used to be cancelled, so a bucket of water poured inside your own ward sat there as one still block. Liquid placed by the owner or a member now spreads normally inside the ward. Flow from outside the ward, or from another owner's ward, still stops at the edge.
